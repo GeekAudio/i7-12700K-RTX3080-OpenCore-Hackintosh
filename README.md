@@ -25,7 +25,7 @@
 | 有线网卡 | Intel I225-V 2.5GbE | `AppleIGC.kext` |
 | 无线 / 蓝牙 | Intel Wi-Fi 6 AX201 | `itlwm` + `IntelBluetoothFirmware`（**当前禁用**） |
 | 存储 | NVMe | `NVMeFix.kext` |
-| 显示器 | 1920×1080 @ 60 Hz | 50 Hz 会黑屏 |
+| 显示器 | 1920×1080 @ 60 Hz | 建议 60 Hz |
 | 系统 | macOS 15.8.1 (24H32) | OpenCore 1.0.8 RELEASE |
 
 ---
@@ -273,6 +273,55 @@ build/accel_build.sh <src> <out>     # kexts
 2. **SMBIOS `iMacPro1,1` 不在 macOS 26 Tahoe 支持列表**，升级 Tahoe 需换机型或 `-no_compat_check`。
 3. 核显无驱动是刻意为之（本机只用独显）；若你的核显可用，请自行调整。
 4. 保持 U 盘插着：OpenCore 在 U 盘上，它就是启动配置。在把引导迁到内置 EFI 并复核之前，别拔。
+
+---
+
+## 十一、已知问题
+
+这套配置**存在若干已知 bug**，需要先说清楚：**它们与显示器刷新率无关，不是「50 Hz 黑屏」**。
+
+| 现象 | 说明 |
+|---|---|
+| **窗口重影** | 鼠标划过**未激活**窗口时，窗口内的文字/框线会被重复绘制（同一条线画在相距数像素的多处）；鼠标停下后重影仍在，点一下聚焦即恢复 |
+| **黑窗 / 黑块扩散** | 重影区域在**切换刷新率**后会变成纯黑并向周围扩散；桌面本身不受影响 |
+| **偶发「黑一下」** | 短暂黑屏，但**屏幕上仍有鼠标光标** —— 说明 WindowServer 还活着、只是合成器画不出来，即 Metal 设备尚未就绪 |
+| **蓝牙同步调用死锁** | 本配置屏蔽了 `IOBluetoothFamily` 但系统 `bluetoothd` 仍在跑 → 同步 XPC 会一直等待，严重时连 USB 输入一起卡死。换 **Broadcom BCM943602CDP** 可解 |
+
+- 显示器**建议使用 60 Hz**，但**不要**把这些现象归因于 50 Hz —— 它们是驱动侧（NVIDIA 显示 / 合成路径）的问题。
+- 上游问题跟踪：<https://github.com/nullmoth/nvidia-macos-driver/issues>
+
+## 十二、致谢
+
+本配置完全建立在别人的工作上，在此一并致谢。
+
+**核心**
+
+- **[NullMoth Systems](https://github.com/nullmoth)** —— 没有他们，这台机器根本跑不起来：
+  - [**1401**](https://github.com/nullmoth/1401)：装机流水线（检测硬件 / 生成 OpenCore / 制作安装盘 / 装驱动）
+  - [**nvidia-macos-driver**](https://github.com/nullmoth/nvidia-macos-driver)：RTX 3080 的 Metal 与显示驱动
+- **[acidanthera](https://github.com/acidanthera)** —— [OpenCorePkg](https://github.com/acidanthera/OpenCorePkg)、[Lilu](https://github.com/acidanthera/Lilu)、[VirtualSMC](https://github.com/acidanthera/VirtualSMC)、[WhateverGreen](https://github.com/acidanthera/WhateverGreen)、[NVMeFix](https://github.com/acidanthera/NVMeFix)、[AppleALC](https://github.com/acidanthera/AppleALC)、[RestrictEvents](https://github.com/acidanthera/RestrictEvents)、BlueToolFixup
+
+**Kext 作者**
+
+- **[dhinakg](https://github.com/dhinakg)** —— [AMFIPass](https://github.com/dhinakg/AMFIPass)、[USBToolBox](https://github.com/USBToolBox/tool)（`USBToolBox.kext` + `UTBMap.kext`）
+- **[zxystd / OpenIntelWireless](https://github.com/OpenIntelWireless)** —— [itlwm](https://github.com/OpenIntelWireless/itlwm)、[IntelBluetoothFirmware](https://github.com/OpenIntelWireless/IntelBluetoothFirmware)、IntelBTPatcher
+- **sxx** —— AppleIGC（Intel I225/I226 网卡驱动）
+- **[b00t0x](https://github.com/b00t0x)** —— [CpuTopologyRebuild](https://github.com/b00t0x/CpuTopologyRebuild)
+- **joedm** —— SMCSuperIO
+- **RehabMan** —— XHCI-unsupported
+- **[corpnewt](https://github.com/corpnewt)** —— [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS)
+
+**驱动底层**
+
+- **[Mesa](https://gitlab.freedesktop.org/mesa/mesa)** 的 **NVK** 与 **NAK** 编译器
+- **metal2vulkan** —— 着色器翻译器（`libnvmtl_translate.dylib`）的基础
+- **NVIDIA** —— `open-gpu-kernel-modules` r610 与 GSP 固件
+
+**文档与工具**
+
+- **[lzhoang2801](https://github.com/lzhoang2801)** —— [OpCore-Simplify](https://github.com/lzhoang2801/OpCore-Simplify)（1401 的配置生成引擎）
+- **[Dortania](https://dortania.github.io/OpenCore-Install-Guide/)** —— OpenCore 安装指南
+- NullMoth Discord 社区里各位报告者与验证者
 
 ---
 
