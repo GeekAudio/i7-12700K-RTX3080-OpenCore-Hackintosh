@@ -711,7 +711,7 @@
 			<key>EnablePassword</key>
 			<false/>
 			<key>ExposeSensitiveData</key>
-			<integer>0</integer>
+			<integer>7</integer>
 			<key>HaltLevel</key>
 			<integer>2147483648</integer>
 			<key>PasswordHash</key>
@@ -798,7 +798,7 @@
 			<key>7C436110-AB2A-4BBB-A880-FE41995C9F82</key>
 			<dict>
 				<key>boot-args</key>
-				<string>-v -nvkmsnosmooth nvfb=1 nvaccel=1 nvfbheads=4 amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1</string>
+				<string>-v -nvkmsnosmooth nvfb=1 nvaccel=1 nvfbheads=4 amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0</string>
 				<key>csr-active-config</key>
 				<data>
 				QwoAAA==

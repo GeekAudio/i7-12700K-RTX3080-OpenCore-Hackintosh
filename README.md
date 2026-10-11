@@ -174,6 +174,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `Booter → Quirks → ResizeAppleGpuBars` | `-1` | 让 macOS 看到完整 BAR |
 | `Kernel → Block` | `com.apple.iokit.IONDRVSupport`，Strategy `Exclude` | 否则固件帧缓冲会抢走 NVRMFB 的显示 index 0 |
 | `Misc → Security → SecureBootModel` | `Disabled` | Apple Secure Boot 会拒绝非 Apple 签名的 kext |
+| `Misc → Security → ExposeSensitiveData` | `7` | 暴露 `boot-path` + OpenCore 版本，让 1401 Mac app 能确认启动分区；选 7 而非 15 是刻意不含 `0x8` 的 OEM 信息 |
 
 ### 还必须满足
 
@@ -187,7 +188,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 ## 五、boot-args（本仓库当前值）
 
 ```
--v -nvkmsnosmooth nvfb=1 nvaccel=1 nvfbheads=4 amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1
+-v -nvkmsnosmooth nvfb=1 nvaccel=1 nvfbheads=4 amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0
 ```
 
 | 参数 | 作用 |
@@ -198,10 +199,10 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `-wegnoigpu` | WhateverGreen：屏蔽无驱动的 Intel 核显 |
 | `nvrmsettle=1500` | 驱动 settle 时间；**必须保留**，否则 ReBAR 关闭时开机会卡 2 分钟 |
 | `nvfbsample=1` | 诊断用：每 10 s 校验一次帧缓冲 |
+| `ipc_control_port_options=0` | 关闭 xnu Mach 控制端口加固。AMFI 放宽后，Firefox / Chromium 系会因自身 task 控制端口被守卫判死而**启动即崩**，故为 `amfi_get_out_of_my_way=0x1` 的配套项 |
 | `-v` | 详细启动日志 |
 
-> 上游驱动文档的推荐值里还含 **`ipc_control_port_options=0`**（本机当前未加，可自行补上）。
-> 完整推荐串：`nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0`
+> 上游驱动文档的推荐串：`nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0` —— 本仓库已**全部包含**，另加了本机必需的 `-wegnoigpu`、本机 workaround `nvrmsettle=1500` 与诊断项 `nvfbsample=1`。
 
 ---
 
@@ -322,6 +323,16 @@ build/accel_build.sh <src> <out>     # kexts
 - **[lzhoang2801](https://github.com/lzhoang2801)** —— [OpCore-Simplify](https://github.com/lzhoang2801/OpCore-Simplify)（1401 的配置生成引擎）
 - **[Dortania](https://dortania.github.io/OpenCore-Install-Guide/)** —— OpenCore 安装指南
 - NullMoth Discord 社区里各位报告者与验证者
+
+---
+
+## 更新记录
+
+- **2026-10-11** —— 按上游 1401 / 驱动文档补齐两项：
+  - `boot-args` 增加 **`ipc_control_port_options=0`**（AMFI 放宽后 Firefox / Chromium 系不加它会启动即崩）；
+  - `Misc → Security → ExposeSensitiveData` 由 `0` 改为 **`7`**（此前为 0，也是 1401 诊断报告里出现 `OpenCore : UNK-000-0000-00-00` 的原因）。
+- **2026-10-11** —— 更正主板型号（ASUS TUF GAMING Z690-PLUS WIFI D4）、ReBAR 已开启；补充 1401 装机流程与驱动对接配置表。
+- **2026-10-11** —— 首个版本（OpenCore 1.0.8，i7-12700K + RTX 3080，SMBIOS `iMacPro1,1`）。
 
 ---
 
