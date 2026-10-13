@@ -737,7 +737,7 @@
 			<key>AppleCpuPmCfgLock</key>
 			<false/>
 			<key>AppleXcpmCfgLock</key>
-			<true/>
+			<false/>
 			<key>AppleXcpmExtraMsrs</key>
 			<false/>
 			<key>AppleXcpmForceBoost</key>
@@ -828,7 +828,7 @@
 			<key>TakeoffDelay</key>
 			<integer>0</integer>
 			<key>Timeout</key>
-			<integer>1</integer>
+			<integer>5</integer>
 		</dict>
 		<key>Debug</key>
 		<dict>
@@ -1042,7 +1042,7 @@
 			<key>SpoofVendor</key>
 			<true/>
 			<key>SystemMemoryStatus</key>
-			<string>Upgradable</string>
+			<string>Auto</string>
 			<key>SystemProductName</key>
 			<string>MacPro7,1</string>
 			<key>SystemSerialNumber</key>
@@ -1060,11 +1060,11 @@
 					<key>AssetTag</key>
 					<string></string>
 					<key>BankLocator</key>
-					<string>BANK 0</string>
-					<key>DeviceLocator</key>
-					<string>DIMM_A1</string>
-					<key>Manufacturer</key>
 					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 1 (Channel F / DIMM 1)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
 					<key>PartNumber</key>
 					<string></string>
 					<key>SerialNumber</key>
@@ -1072,15 +1072,15 @@
 					<key>Size</key>
 					<integer>0</integer>
 					<key>Speed</key>
-					<integer>3600</integer>
+					<integer>0</integer>
 				</dict>
 				<dict>
 					<key>AssetTag</key>
 					<string></string>
 					<key>BankLocator</key>
-					<string>BANK 0</string>
+					<string></string>
 					<key>DeviceLocator</key>
-					<string>DIMM_A2</string>
+					<string>Slot 2 (Channel F / DIMM 2)</string>
 					<key>Manufacturer</key>
 					<string>Kingston</string>
 					<key>PartNumber</key>
@@ -1096,11 +1096,11 @@
 					<key>AssetTag</key>
 					<string></string>
 					<key>BankLocator</key>
-					<string>BANK 0</string>
-					<key>DeviceLocator</key>
-					<string>DIMM_B1</string>
-					<key>Manufacturer</key>
 					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 3 (Channel E / DIMM 1)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
 					<key>PartNumber</key>
 					<string></string>
 					<key>SerialNumber</key>
@@ -1108,15 +1108,87 @@
 					<key>Size</key>
 					<integer>0</integer>
 					<key>Speed</key>
-					<integer>3600</integer>
+					<integer>0</integer>
 				</dict>
 				<dict>
 					<key>AssetTag</key>
 					<string></string>
 					<key>BankLocator</key>
-					<string>BANK 0</string>
+					<string></string>
 					<key>DeviceLocator</key>
-					<string>DIMM_B2</string>
+					<string>Slot 4 (Channel E / DIMM 2)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 5 (Channel D / DIMM 1)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 6 (Channel D / DIMM 2)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 7 (Channel A / DIMM 2)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 8 (Channel A / DIMM 1)</string>
 					<key>Manufacturer</key>
 					<string>Kingston</string>
 					<key>PartNumber</key>
@@ -1127,6 +1199,78 @@
 					<integer>16384</integer>
 					<key>Speed</key>
 					<integer>3600</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 9 (Channel B / DIMM 2)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 10 (Channel B / DIMM 1)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 11 (Channel C / DIMM 2)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string></string>
+					<key>DeviceLocator</key>
+					<string>Slot 12 (Channel C / DIMM 1)</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
 				</dict>
 			</array>
 			<key>ErrorCorrection</key>
@@ -1134,7 +1278,7 @@
 			<key>FormFactor</key>
 			<integer>9</integer>
 			<key>MaxCapacity</key>
-			<integer>131072</integer>
+			<integer>68719476736</integer>
 			<key>TotalWidth</key>
 			<integer>64</integer>
 			<key>Type</key>
@@ -1423,7 +1567,7 @@
 			<key>RequestBootVarRouting</key>
 			<true/>
 			<key>ResizeGpuBars</key>
-			<integer>13</integer>
+			<integer>-1</integer>
 			<key>ResizeUsePciRbIo</key>
 			<false/>
 			<key>ShimRetainProtocol</key>

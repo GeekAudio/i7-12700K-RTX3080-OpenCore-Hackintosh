@@ -1,7 +1,7 @@
 # ASUS TUF GAMING Z690-PLUS WIFI D4 + i7-12700K + RTX 3080 — OpenCore EFI
 
 一台 Alder Lake + NVIDIA RTX 3080 黑苹果的 OpenCore EFI 备份，SMBIOS 为 **MacPro7,1**，系统 **macOS 26.7.1 (25G241 / Darwin 25.6.0)**。
-显卡由 **NullMoth NVIDIA 驱动 1.14.4** 驱动（Turing 及以后），核显无驱动、已屏蔽；无线改用 **Broadcom BCM943602CDP**。
+显卡由 **NullMoth NVIDIA 驱动 1.15.0** 驱动（Turing 及以后），核显无驱动、已屏蔽；无线改用 **Broadcom BCM943602CDP**。
 
 > ⚠️ **序列号已脱敏**：`config.plist` 中的 `SystemSerialNumber` / `MLB` / `SystemUUID` / `ROM`
 > 以及蓝牙控制器地址已替换为**明显的占位值**（全 `X` / 全 `0`，见下）。
@@ -23,7 +23,7 @@
 > 详见 [scripts/README.md](scripts/README.md)。
 
 > ⚠️ **本 EFI 是「驱动装好之后」的运行配置，不是装机配置。**
-> 它使用大 BAR（`ResizeGpuBars = 13`）并且排除了 `IONDRVSupport` —— 这两项会让**没有 NVIDIA 驱动**的 macOS 安装器黑屏。
+> 它使用大 BAR（`ResizeGpuBars = -1` ⇒ 16 GB）并且排除了 `IONDRVSupport` —— 这两项会让**没有 NVIDIA 驱动**的 macOS 安装器黑屏。
 > 全新安装请走下面的 **1401 流程**（1401 会为安装器自动生成小 BAR 的配置）。
 
 ---
@@ -35,7 +35,7 @@
 | CPU | Intel Core i7-12700K (Alder Lake, 8P+4E) | `SSDT-PLUG-ALT.aml`（12 代 XCPM 处理器表）；`ProcessorType=3841` |
 | 主板 | **ASUS TUF GAMING Z690-PLUS WIFI D4** | BIOS 中 **ReBAR 已开启**、Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**（见下方 ⚠️） |
 | 内存 | 2 × 16 GB DDR4-3600 Kingston `KHX2666C16/16G`（插在 A2 / B2） | SMBIOS 由 `PlatformInfo/Memory` 注入 4 槽视图（外观项） |
-| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.14.4**；BAR1 = 8 GB |
+| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.15.0**；BAR1 = 16 GB（`ResizeGpuBars = -1`） |
 | 核显 | Intel UHD 770 (`8086:4680`) | **无驱动，`-wegnoigpu` 屏蔽** |
 | 有线网卡 | Intel I225-V 2.5GbE | `AppleIGC.kext` |
 | 无线 / 蓝牙 | **Broadcom BCM943602CDP**（Wi-Fi `14e4:43ba` / 蓝牙 BCM20703，USB） | `IO80211FamilyLegacy` + **`AirPortBrcmNIC-Tahoe.kext`** + `BlueToolFixup`（**需 OCLP 根补丁**，见 §九） |
@@ -194,7 +194,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 
 | 位置 | 值 | 原因 |
 |---|---|---|
-| `UEFI → Quirks → ResizeGpuBars` | `13` | 8 GB BAR，完整显存带宽 |
+| `UEFI → Quirks → ResizeGpuBars` | `-1` | 固件自放 BAR（本机当前实测值，BAR1 = 16 GB）。⚠️ 早期为 `13`（8 GB）；1.14.7 起安装器改为「保留既有设置」，不再强制写 `13` |
 | `Booter → Quirks → ResizeAppleGpuBars` | `-1` | 让 macOS 看到完整 BAR |
 | `Kernel → Block` | `com.apple.iokit.IONDRVSupport`，Strategy `Exclude` | 否则固件帧缓冲会抢走 NVRMFB 的显示 index 0 |
 | `Kernel → Block` | `com.apple.iokit.IOSkywalkFamily`，Strategy `Exclude` | 让 OCLP 的 IOSkywalkFamily 生效（见 §九） |
@@ -387,7 +387,7 @@ build/accel_build.sh <src> <out>     # kexts
 | **窗口重影** | 🔴 仍存在 | 鼠标划过**未激活**窗口时，窗口内的文字/框线会被重复绘制（同一条线画在相距数像素的多处）；鼠标停下后重影仍在，点一下聚焦即恢复 |
 | **黑窗 / 黑块扩散** | 🔴 仍存在 | 重影区域在**切换刷新率**后会变成纯黑并向周围扩散；桌面本身不受影响。1.14.0 只修了「色块」那一路，全黑那一路还在 |
 | **偶发「黑一下」** | 🔴 仍存在 | 短暂黑屏，但**屏幕上仍有鼠标光标** —— 说明 WindowServer 还活着、只是合成器画不出来，即 Metal 设备尚未就绪 |
-| **USB3 拿不到** | 🟡 已接受 | Sequoia 下本机 USB3 无解（15 端口上限 + 端口图铁律）。现状用 T3 图：后置 6×USB-A + 2×Type-C **全部可用，但只有 USB2 速率** |
+| **USB3 拿不到** | 🟡 已接受 | 本机 USB3 无解（15 端口上限 + 端口图铁律）。现状用 T3 图：后置 6×USB-A + 2×Type-C **全部可用，但只有 USB2 速率** |
 | ~~蓝牙同步调用死锁~~ | ✅ **已解决** | 原 `IOBluetoothFamily` 被屏蔽但 `bluetoothd` 在跑 ⇒ 同步 XPC 永久等待，严重时连 USB 输入一起卡死。**换 BCM943602CDP 后根除** |
 | ~~mediaanalysisd 崩溃~~ | ✅ **已修** | 驱动 1.14.0 起不再出现 |
 | **显示器被识别成 30.5″ 电视** | 🔴 仍存在 | 1.15.0 更新日志宣称「Fix monitors shown as a 30-inch TV in About This Mac」，但**本机实测无效**（补丁确在二进制里、UUID 已核对，仍报 30.5959″）。根因方向已订正：`'dflg'` 是 **macOS 往下写给驱动**的，驱动从不产生电视位 ⇒ 判定在 framebuffer 之上（CoreDisplay/CoreGraphics），可疑触发点是 EDID 的 CEA-861 扩展块 |
@@ -411,6 +411,7 @@ build/accel_build.sh <src> <out>     # kexts
 
 | 日期 | 变更 |
 |---|---|
+| 2026-10-13 | **EFI 同步**：`ResizeGpuBars` `13` → **`-1`**（16 GB）；`config.plist` 与当前 `~/Desktop/EFI/OC/config.plist` 部署母本逐项对齐（仅脱敏字段不同）；README 正文的驱动版本 / BAR1 数值订正 |
 | 2026-10-13 | 驱动升到 **1.15.0**（`-nvrmsmallbar` 等）；补记 `ResizeGpuBars` **当前实测为 `-1`（16 GB）**、`ResizeAppleGpuBars = -1`；已知问题补 30.5″ 电视误报；§五 增 `-nvrmsmallbar` 说明 |
 | 2026-10-13 | 系统升到 **macOS 26.7.1 (25G241)**；SMBIOS 换 **`MacPro7,1`**（BIOS 需 `Intel Speed Shift Technology = Enabled`）；加 **CPUFriend + CPUFriendDataProvider** 修 CPU 限频；ACPI 换 `SSDT-PLUG-ALT` + `SSDT-XH_ADLS3`（配 `ACPI → Delete`）；加 `AirPortBrcmNIC-Tahoe.kext`（Darwin 25 Wi-Fi）；`DeviceProperties` 加 PCI 槽位名；boot-args 加 `-no_compat_check` / `revpatch` / `revcpu`；瘦身（移除 AppleALC / itlwm / Intel 蓝牙三件套）；**新增 [`scripts/`](scripts/) 诊断脚本** |
 | 2026-10-12 | 驱动升到 **1.14.2**；换 **BCM943602CDP**（EFI 加 IOSkywalkFamily + IO80211FamilyLegacy，Block 收敛为 2 条，启用 BlueToolFixup）；`SSDT-SBUS-MCHC` 禁用；新增 `NullMothLogo.efi` 与两条 `NullMothSafe.efi` 救援项；boot-args 归位为当前串 |
