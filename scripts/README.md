@@ -38,6 +38,7 @@ bash check-rebar-state.sh
 | `capture-ghost-pack.sh` | 重影**现象出现时**跑一次，把那一刻的整屏/窗口截图 + 驱动计数器 + 按启动分段的 surfvram 统计收进一个目录 | 否 | `screencapture`；窗口级抓取需 PyObjC（可选） |
 | `watch-ghost.sh` | 重影**自动连拍**：每 N 秒抓一张，你只管复现，事后按时间点回看 | 否 | 同上 |
 | `cpu-freq-probe.sh` | 实测 CPU 真实核心频率（用 `mulsd` 4 周期依赖链 + 内联汇编，防止编译器折叠） | 否 | `clang`（Xcode 命令行工具） |
+| `add-nvrmsmallbar.sh` | 加 / 撤驱动 **1.15.0** 新增的 boot-arg **`-nvrmsmallbar`**（让 ReBAR 卡改走「小 BAR 卡」路径，相当于**软件关掉 ReBAR**） | 是（改 EFI，弹一次密码框） | 无 |
 
 ### 典型用法
 
@@ -60,6 +61,11 @@ bash check-surfdirty.sh
 
 # 5) 看 CPU 有没有被限频（本机曾卡在 2.3 GHz）
 bash cpu-freq-probe.sh
+
+# 6) 用 -nvrmsmallbar 做「软件关 ReBAR」的对照实验（需 1.15.0+，改完要重启）
+bash add-nvrmsmallbar.sh --check    # 只看状态，不需要 root
+sudo bash add-nvrmsmallbar.sh       # 加上，重启后 BAR1 → 32 MB
+sudo bash add-nvrmsmallbar.sh --revert   # 撤掉
 ```
 
 ### 输出目录
@@ -74,9 +80,10 @@ bash cpu-freq-probe.sh
 
 | `bar1` 显示 | 含义 |
 |---|---|
-| **8 GB** | ✅ 作者验证过的尺寸，正确 |
+| **8 GB** | ✅ 作者验证过的尺寸（`ResizeGpuBars=13`） |
 | 4 GB | 可用，但不是最优 |
-| **> 8 GB**（如 16 GB） | ⚠️ 会在显卡 bring-up 阶段卡住 |
+| **16 GB** | ⚠️ 进度条能看见但会卡 ~10 s；用 `ResizeGpuBars=14` 硬钉才会在 bring-up 停住。**bug 照样在** |
 | 256 MB / 64 MB | ReBAR 没生效（VBIOS 不支持，或 BIOS 没开 Above 4G / ReBAR） |
+| **32 MB** | 说明 boot-args 里有 `-nvrmsmallbar`（1.15.0 诊断开关），驱动**主动放弃**放大 / 重定位 BAR1 |
 
-> 详细原理、四档配置对比、以及「重影/黑窗」与 BAR1 大小的关系，见 ReBAR 完全指南。
+> 详细原理、五档配置对比、以及「重影/黑窗」与 BAR1 大小的关系，见 ReBAR 完全指南。

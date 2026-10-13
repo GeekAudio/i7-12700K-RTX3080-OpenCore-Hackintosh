@@ -244,6 +244,19 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 > —— 本机串与之等价（多了 `-v` / `-wegnoigpu` / `nvrmsettle=1500` / `nvfbsample=1` 等本机必需的项）。
 > **注意**：本机 boot-args 中**没有** `-nvrmnoflip` —— 大 BAR1 体制下用默认的零拷贝路径。
 
+### 可选：`-nvrmsmallbar`（驱动 1.15.0 新增，**本机当前未使用**）
+
+| 参数 | 作用 |
+|---|---|
+| `-nvrmsmallbar` | 让 `NVRM::placeLargeBar1()` 一进函数就 `return false` ⇒ **驱动既不放大小 BAR1，也不把它搬到高地址**，于是 ReBAR 卡改走「小 BAR 卡」的代码路径（小预算 / 拷贝路径 / 私有 surface）。 |
+
+- 作者原话（`kexts/NVRM/NVRM.cpp`，提交 `ab740c2fce`）：**"for testing and diagnosis"** —— 它是**诊断/对照开关，不是修复**，因此**不进** 1.15.0 的 CHANGELOG 正文。
+- **实测（本机，2026-10-13）**：加该参数后驱动日志为 `bar1: -nvrmsmallbar set — BAR1 left as IOPCIFamily placed it`，BAR1 从 8 GB 掉到 **32 MB**（`0x2000000`）；去掉后回到 8 GB 并出现 `placing` / `PLACED` 两行（那两行就是开机 ~21 s 死画面的来源）。
+- **它不是「关 ReBAR」的等价物**：拨杆切原厂档得到的是 **256 MB**，这个开关得到的是 **32 MB**，别把两者的结论互相套用。
+- 用途：想验证「某症状是不是大 BAR1 引起的」时，**不用断电、不用拨杆**即可做 A/B；实验完请撤掉（32 MB 比原厂 256 MB 还小，等于主动放弃 ReBAR 全部好处）。
+- 判读：`sysctl debug.nvrmfb_vram_budget_bytes` 应变成 **201326592**（192 MB）；若仍是 4096/8192 MB，说明没进小 BAR 体制。
+- ⚠️ **macOS 26 起无法在系统内写 boot-args**（`nvram boot-args=…` 报 `(iokit/common) general error (1)`），只能改 EFI 的 `config.plist`，改完必须重启。
+
 ---
 
 ## 六、Kexts
@@ -377,9 +390,11 @@ build/accel_build.sh <src> <out>     # kexts
 | **USB3 拿不到** | 🟡 已接受 | Sequoia 下本机 USB3 无解（15 端口上限 + 端口图铁律）。现状用 T3 图：后置 6×USB-A + 2×Type-C **全部可用，但只有 USB2 速率** |
 | ~~蓝牙同步调用死锁~~ | ✅ **已解决** | 原 `IOBluetoothFamily` 被屏蔽但 `bluetoothd` 在跑 ⇒ 同步 XPC 永久等待，严重时连 USB 输入一起卡死。**换 BCM943602CDP 后根除** |
 | ~~mediaanalysisd 崩溃~~ | ✅ **已修** | 驱动 1.14.0 起不再出现 |
+| **显示器被识别成 30.5″ 电视** | 🔴 仍存在 | 1.15.0 更新日志宣称「Fix monitors shown as a 30-inch TV in About This Mac」，但**本机实测无效**（补丁确在二进制里、UUID 已核对，仍报 30.5959″）。根因方向已订正：`'dflg'` 是 **macOS 往下写给驱动**的，驱动从不产生电视位 ⇒ 判定在 framebuffer 之上（CoreDisplay/CoreGraphics），可疑触发点是 EDID 的 CEA-861 扩展块 |
 
 - 显示器**建议使用 60 Hz**，但**不要**把这些现象归因于 50 Hz —— 它们是驱动侧（NVIDIA 显示 / 合成路径）的问题。
 - 上游问题跟踪：<https://github.com/nullmoth/nvidia-macos-driver/issues>
+- **1.15.0 的状态**：重影 / 黑窗 bug **仍列在其 CHANGELOG 的 Known issues 里**（"Ghost or black areas after windows overlap with a BAR of 4 GB or more (#127)"）⇒ 1.15.0 **没有修**这个问题。
 
 > **★ 重影 / 黑窗由 BAR1 大小门控**（本机 A/B + 四档二分实测，上游 issue #127）：
 > 只要驱动看到的 `fBarLen >= 4 GB`（4 / 8 / 16 GB 都算），重影就可能出现；
@@ -396,6 +411,7 @@ build/accel_build.sh <src> <out>     # kexts
 
 | 日期 | 变更 |
 |---|---|
+| 2026-10-13 | 驱动升到 **1.15.0**（`-nvrmsmallbar` 等）；补记 `ResizeGpuBars` **当前实测为 `-1`（16 GB）**、`ResizeAppleGpuBars = -1`；已知问题补 30.5″ 电视误报；§五 增 `-nvrmsmallbar` 说明 |
 | 2026-10-13 | 系统升到 **macOS 26.7.1 (25G241)**；SMBIOS 换 **`MacPro7,1`**（BIOS 需 `Intel Speed Shift Technology = Enabled`）；加 **CPUFriend + CPUFriendDataProvider** 修 CPU 限频；ACPI 换 `SSDT-PLUG-ALT` + `SSDT-XH_ADLS3`（配 `ACPI → Delete`）；加 `AirPortBrcmNIC-Tahoe.kext`（Darwin 25 Wi-Fi）；`DeviceProperties` 加 PCI 槽位名；boot-args 加 `-no_compat_check` / `revpatch` / `revcpu`；瘦身（移除 AppleALC / itlwm / Intel 蓝牙三件套）；**新增 [`scripts/`](scripts/) 诊断脚本** |
 | 2026-10-12 | 驱动升到 **1.14.2**；换 **BCM943602CDP**（EFI 加 IOSkywalkFamily + IO80211FamilyLegacy，Block 收敛为 2 条，启用 BlueToolFixup）；`SSDT-SBUS-MCHC` 禁用；新增 `NullMothLogo.efi` 与两条 `NullMothSafe.efi` 救援项；boot-args 归位为当前串 |
 | 2026-10-11 | 对齐 1401 / 驱动文档：boot-args 增 `ipc_control_port_options=0`；`ExposeSensitiveData` 0 → 7 |
