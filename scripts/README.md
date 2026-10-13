@@ -17,6 +17,18 @@ curl -fsSL https://raw.githubusercontent.com/GeekAudio/i7-12700K-RTX3080-OpenCor
 
 > 用 `curl | bash` 时脚本的工作目录是你的当前目录，输出会落在当前目录下。
 
+### 如果 `raw.githubusercontent.com` 连不上（国内常见）
+
+用 GitHub API 取同一个文件，**内容逐字节相同**（已校验），**不需要 token**（未认证限额 60 次/小时）：
+
+```bash
+curl -fsSL "https://api.github.com/repos/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/contents/scripts/check-rebar-state.sh?ref=main" \
+  | /usr/bin/python3 -c 'import sys,json,base64;print(base64.b64decode(json.load(sys.stdin)["content"]).decode(),end="")' \
+  > check-rebar-state.sh && bash check-rebar-state.sh
+```
+
+把 URL 里的文件名换成别的脚本名即可。若走不通，就用下面的 `git clone`。
+
 ## 或者先下载再跑（推荐，方便看清内容）
 
 ```bash
