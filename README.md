@@ -440,6 +440,38 @@ NVRM: NV_ERR_MEMORY_ERROR (0x00000072) … RmInitAdapter failed! (0x24:0x72:1281
 
 > 报告中提到的 `readBARs()` 槽位错配（`0x14` 缺失时 `0x1c` 顶替进 FB 槽）**是报告者自己写明的假设，尚未证实**，请勿当作结论。
 
+### 上游已验证的解法（成功案例速查）
+
+按「症状 → 别人是怎么解决的」整理，全部出自上游 issue 里报告者自己的话。**照抄前先看自己的 BAR1**（`ioreg -r -n NVRM -d 1 -l | grep nvrm-bars`）。
+
+**A. 已正式关闭（`[DONE]` / completed）**
+
+| 症状 | 机器 / BAR1 | 解法 | 出处 |
+|---|---|---|---|
+| 每次开机多等 ~102 秒 | RTX 3080，原厂 256 MB | boot-args 加 `nvrmsettle=<ms>`（+197 s → +94 s） | [#23](https://github.com/nullmoth/nvidia-macos-driver/issues/23) |
+| 剩下 ~60 秒开机延迟 | 主板带**无驱动** Intel 核显 | `-wegnoigpu`（91 s → 27 s；最终 137 s → 28 s） | [#35](https://github.com/nullmoth/nvidia-macos-driver/issues/35) |
+| 光标一动就闪屏 / 画面冻结 | RTX 3080，256 MB | `-nvrmnoflip` | [#20](https://github.com/nullmoth/nvidia-macos-driver/issues/20) |
+| WindowServer 崩溃循环 `Failed to create MetalDevice` | GTX 1650，**BAR1 4 GB** | 升到 **1.2.0**；真因 = `/Library/GPUBundles/nvmtl-allow.txt` 权限 `0600` → `0644 root:wheel`（另一台 RTX 4060 Laptop 独立复现） | [#38](https://github.com/nullmoth/nvidia-macos-driver/issues/38) |
+| 装完驱动后 verbose 画面冻住 | RTX 3070 Ti，`13`（8192 MiB） | 升到 **1.1.0** | [#12](https://github.com/nullmoth/nvidia-macos-driver/issues/12) |
+| 屏幕持续闪烁（多卡） | 2070S / 4050 Laptop / 5070 Ti / 3050 Ti Laptop | 升到 **1.14.2** | [#124](https://github.com/nullmoth/nvidia-macos-driver/issues/124) |
+| 100 Hz 只跑 ~49 fps（75 Hz 反而正常） | GTX 1650，BAR1 4 GB，双屏 | 升到 **1.10.0**（100 Hz → ~98 fps） | [#67](https://github.com/nullmoth/nvidia-macos-driver/issues/67) |
+| 开机 ~3 分钟后桌面卡到 ~6 fps | RTX 5060 Ti 16 GB，4K 144 Hz | 升到 **1.15.0**（`79e1c2f`「Reclaim pending surface slots」） | [#143](https://github.com/nullmoth/nvidia-macos-driver/issues/143) |
+
+**B. 未关闭但报告者已确认「这台机器好了」**
+
+| 症状 | 机器 / BAR1 | 解法 | 出处 |
+|---|---|---|---|
+| `rm_init_adapter -> FAILED` | RTX 3050 Ti Laptop（AMD 核显 + dGPU-only） | **PAT 补丁换成 `Algrey / Zormeister` 变体**，禁用 Shaneee 那几条 —— 报告者认为影响**所有 AMD iGPU + NVIDIA dGPU 笔记本** | [#69](https://github.com/nullmoth/nvidia-macos-driver/issues/69) / [#15](https://github.com/nullmoth/nvidia-macos-driver/issues/15) |
+| 外接屏黑 / 画面冻结（`Display Hash table is FULL`） | RTX 2070 Super Laptop，**BAR1 256 MB（卡无 ReBAR 能力）** | **`-nvrmnoflip` 必需**；100 秒等待属预期（#23）。标题直接写 "(works)" | [#82](https://github.com/nullmoth/nvidia-macos-driver/issues/82) |
+| 按 README 设 `13/-1` 直接冻死启动 | RTX 4090，固件 BAR1 = **32 GB** | 改 `ResizeGpuBars=-1` + `ResizeAppleGpuBars=0`，让 NVRM 自己放 | [#93](https://github.com/nullmoth/nvidia-macos-driver/issues/93) |
+| 610 次 8 MB 分配被拒 + headless 误判 | RTX 3090，BAR1 **64 MB** | **先查 BIOS**：开 `Above 4G Decoding` + `Resizable BAR` | [#117](https://github.com/nullmoth/nvidia-macos-driver/issues/117) |
+
+**规律**：**小 BAR（< 4 GB）靠 boot-args**（`-nvrmnoflip` + `nvrmsettle`）；
+**大 BAR（≥ 4 GB）靠升级驱动版本**（#38 / #12 / #124 / #143 全是版本升级修好的，说明症状多半来自驱动 bug 而非配置）；
+**固件 BAR1 > 8 GB 靠放手**（`-1` / `0`，别让 OpenCore 硬钉）；
+**卡无 ReBAR 能力靠 BIOS**（OpenCore 的 `ResizeGpuBars` 无从可调）。
+另有一个容易误判的跨机器根因：**`nvmtl-allow.txt` 的文件权限**（#38）—— BAR1 和 RM 都正常，却没有桌面。
+
 > **★ 重影 / 黑窗由 BAR1 大小门控**（本机 A/B + 四档二分实测，上游 issue #127）：
 > 只要驱动看到的 `fBarLen >= 4 GB`（4 / 8 / 16 GB 都算），重影就可能出现；
 > **256 MB 原厂档不会出现**。与之相对，`< 4 GB` 时图形内存预算被写死 192 MB，
@@ -459,6 +491,7 @@ NVRM: NV_ERR_MEMORY_ERROR (0x00000072) … RmInitAdapter failed! (0x24:0x72:1281
 | 2026-10-13 | **EFI 同步**：`ResizeGpuBars` `13` → **`-1`**（16 GB）；`config.plist` 与当前 `~/Desktop/EFI/OC/config.plist` 部署母本逐项对齐（仅脱敏字段不同）；README 正文的驱动版本 / BAR1 数值订正 |
 | 2026-10-13 | 驱动升到 **1.15.0**（`-nvrmsmallbar` 等）；补记当时 `ResizeGpuBars` 实测为 `-1`（16 GB）——**当晚 22:46 已改回 `13`，以本行下方的最终行为准**；`ResizeAppleGpuBars = -1`；已知问题补 30.5″ 电视误报；§五 增 `-nvrmsmallbar` 说明 |
 | 2026-10-13 深夜 | 补记上游 **#185**（RTX 4060 Laptop：BAR1 本来已是 8 GB 仍被重定位 ⇒ 光圈表重建失败 ⇒ `RmInitAdapter failed! (0x24:0x72:1281)`）；§十一 增一条「与本机无关但值得知道」的条目 |
+| 2026-10-14 凌晨 | §十一 增 **「上游已验证的解法（成功案例速查）」**：12 个 ReBAR/BAR1 相关成功案例（#23/#35/#20/#38/#12/#124/#67/#143 已关闭；#69/#82/#93/#117 报告者已确认可用），并抽出「小 BAR 靠参数 · 大 BAR 靠版本 · 超大 BAR 靠放手 · 没能力靠 BIOS」这条规律 |
 | 2026-10-13 | 系统升到 **macOS 26.7.1 (25G241)**；SMBIOS 换 **`MacPro7,1`**（BIOS 需 `Intel Speed Shift Technology = Enabled`）；加 **CPUFriend + CPUFriendDataProvider** 修 CPU 限频；ACPI 换 `SSDT-PLUG-ALT` + `SSDT-XH_ADLS3`（配 `ACPI → Delete`）；加 `AirPortBrcmNIC-Tahoe.kext`（Darwin 25 Wi-Fi）；`DeviceProperties` 加 PCI 槽位名；boot-args 加 `-no_compat_check` / `revpatch` / `revcpu`；瘦身（移除 AppleALC / itlwm / Intel 蓝牙三件套）；**新增 [`scripts/`](scripts/) 诊断脚本** |
 | 2026-10-12 | 驱动升到 **1.14.2**；换 **BCM943602CDP**（EFI 加 IOSkywalkFamily + IO80211FamilyLegacy，Block 收敛为 2 条，启用 BlueToolFixup）；`SSDT-SBUS-MCHC` 禁用；新增 `NullMothLogo.efi` 与两条 `NullMothSafe.efi` 救援项；boot-args 归位为当前串 |
 | 2026-10-11 | 对齐 1401 / 驱动文档：boot-args 增 `ipc_control_port_options=0`；`ExposeSensitiveData` 0 → 7 |
