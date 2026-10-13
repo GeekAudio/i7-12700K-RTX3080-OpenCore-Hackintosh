@@ -233,7 +233,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `amfi_get_out_of_my_way=0x1 amfi=0x80` | 让 WindowServer 能加载驱动 bundle（配合 AMFIPass） |
 | `ipc_control_port_options=0` | 配合上面的 AMFI 参数；**缺了它**，加固过的应用（Firefox / Chromium 系）会在启动时因任务控制端口被杀 |
 | `-wegnoigpu` | WhateverGreen：屏蔽无驱动的 Intel 核显 |
-| `nvrmsettle=1500` | 驱动 settle 时间；**必须保留** —— 去掉它、且 BAR1 未放置（ReBAR 关）时，驱动会盲睡 100 秒（≈2 分钟开机）。**注意：只关 ReBAR 但保留本参数，不会有这个延迟。** |
+| `nvrmsettle=1500` | 驱动 settle 时间；**必须保留** —— 去掉它、且 BAR1 未放置（ReBAR 关）时，驱动会盲睡 100 秒（≈2 分钟开机）。**注意：只关 ReBAR 但保留本参数，不会有这个延迟。**（见下方说明） |
 | `nvfbsample=1` | 诊断用：每 10 s 校验一次帧缓冲 |
 | `-no_compat_check` | 让 macOS 26 在 `MacPro7,1` 上跳过机型兼容性检查 |
 | `revpatch=sbvmm,cpuname` + `revcpu=1` | RestrictEvents：修 CPU 名称显示为 `8-Core Intel Core i7-12700K`（见 §四） |
@@ -243,6 +243,21 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 > 上游驱动文档的推荐串为：`nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0`
 > —— 本机串与之等价（多了 `-v` / `-wegnoigpu` / `nvrmsettle=1500` / `nvfbsample=1` 等本机必需的项）。
 > **注意**：本机 boot-args 中**没有** `-nvrmnoflip` —— 大 BAR1 体制下用默认的零拷贝路径。
+
+#### 关于 `nvrmsettle`：那 100 秒盲睡的解法（上游 issue [#23](https://github.com/nullmoth/nvidia-macos-driver/issues/23)，已 closed / DONE）
+
+- **根因**：`kexts/NVRM/NVRM.cpp:328` —— `fAutoGoSettleMs = bar1Placed ? 500 : 100000;`。
+  下一行就是覆盖口：`PE_parse_boot_argn("nvrmsettle", …)`。**BAR1 放不下（256 MB 原厂档）时，每次启动都先盲睡 100 秒**（实测 101–103 s，精确到秒，连续 5 次）。
+- **解法**：boot-args 加 `nvrmsettle=<毫秒>`。**#23 实测同机前后对比：到桌面可用 +197 s → +94 s（省 103 秒）**，`5000` 就够。
+- **1.14 起安装器会自动加，但只对 Turing 卡**：`app/Resources/nullmoth-setup.sh` 里
+  `case "$NVDEV" in 1[eEfF]??|21[89a-fA-F]?) TURING=1;; *) TURING=0;; esac`，命中才加 `nvrmsettle=10000`；且**用户自己设过就尊重用户的值**（`# the user's own value wins`）。
+  ⚠️ **本机是 Ampere（`10de:2206`），不在自动范围内 ⇒ 必须手工保留。**
+- **1.14 另修了两件「同族」的事，但没删掉这 100 秒本身**：
+  ① boot-hold 的 40 秒上限原先从驱动启动算起、会在 `autoGo` 之前到期，导致回退路径上 display-arm 永远失败；现在上限 = **settle + 40 秒**（`NVRM.cpp:334-343`，`docs/CARD-SUPPORT.md` "Startup correction"）。
+  ② 老 Intel 主板（B150 等）「约 100 秒后黑屏」（`docs/TROUBLESHOOTING.md`，标注 Fixed in 1.14）。
+  **`100000` 这个默认值在 1.15.0 里仍然原封不动** ⇒ 上述修复**不能替代** `nvrmsettle`。
+- **那 102 秒之外还有约 60 秒**是另一件事，见 [#35](https://github.com/nullmoth/nvidia-macos-driver/issues/35)（同样 closed / DONE）：
+  是主板枚举的**无驱动 Intel UHD 770** 让 `IOGraphicsFamily` 等待；`-wegnoigpu` 藏掉它后 **91 s → 27 s**（本机 boot-args 已含）。#23 的最终结论：**137 s → 28 s**。
 
 ### 可选：`-nvrmsmallbar`（驱动 1.15.0 新增，**本机当前未使用**）
 
