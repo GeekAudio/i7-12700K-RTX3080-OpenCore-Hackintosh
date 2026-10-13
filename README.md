@@ -233,7 +233,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `amfi_get_out_of_my_way=0x1 amfi=0x80` | 让 WindowServer 能加载驱动 bundle（配合 AMFIPass） |
 | `ipc_control_port_options=0` | 配合上面的 AMFI 参数；**缺了它**，加固过的应用（Firefox / Chromium 系）会在启动时因任务控制端口被杀 |
 | `-wegnoigpu` | WhateverGreen：屏蔽无驱动的 Intel 核显 |
-| `nvrmsettle=1500` | 驱动 settle 时间；**必须保留**，否则 ReBAR 关闭时开机会卡 2 分钟 |
+| `nvrmsettle=1500` | 驱动 settle 时间；**必须保留** —— 去掉它、且 BAR1 未放置（ReBAR 关）时，驱动会盲睡 100 秒（≈2 分钟开机）。**注意：只关 ReBAR 但保留本参数，不会有这个延迟。** |
 | `nvfbsample=1` | 诊断用：每 10 s 校验一次帧缓冲 |
 | `-no_compat_check` | 让 macOS 26 在 `MacPro7,1` 上跳过机型兼容性检查 |
 | `revpatch=sbvmm,cpuname` + `revcpu=1` | RestrictEvents：修 CPU 名称显示为 `8-Core Intel Core i7-12700K`（见 §四） |
