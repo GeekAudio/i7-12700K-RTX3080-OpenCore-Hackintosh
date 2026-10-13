@@ -1,11 +1,26 @@
 # ASUS TUF GAMING Z690-PLUS WIFI D4 + i7-12700K + RTX 3080 — OpenCore EFI
 
-一台 Alder Lake + NVIDIA RTX 3080 黑苹果的 OpenCore EFI 备份，SMBIOS 为 **iMacPro1,1**，系统 **macOS 15.8.1 (24H32)**。
-显卡由 **NullMoth NVIDIA 驱动 1.14.2** 驱动（Turing 及以后），核显无驱动、已屏蔽；无线改用 **Broadcom BCM943602CDP**。
+一台 Alder Lake + NVIDIA RTX 3080 黑苹果的 OpenCore EFI 备份，SMBIOS 为 **MacPro7,1**，系统 **macOS 26.7.1 (25G241 / Darwin 25.6.0)**。
+显卡由 **NullMoth NVIDIA 驱动 1.14.4** 驱动（Turing 及以后），核显无驱动、已屏蔽；无线改用 **Broadcom BCM943602CDP**。
 
-> ⚠️ **序列号已脱敏**：`config.plist` 中的 `SystemSerialNumber` / `MLB` / `SystemUUID` / `ROM` 已替换为随机占位值。
-> 使用前请用 [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) 生成属于你自己的 **iMacPro1,1** 三码，
+> ⚠️ **序列号已脱敏**：`config.plist` 中的 `SystemSerialNumber` / `MLB` / `SystemUUID` / `ROM`
+> 以及蓝牙控制器地址已替换为**明显的占位值**（全 `X` / 全 `0`，见下）。
+> 使用前请用 [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) 生成属于你自己的 **MacPro7,1** 三码，
 > 否则 iMessage / FaceTime / iCloud 无法激活，也可能与他人冲突。
+>
+> | 字段 | 本仓库占位值 |
+> |---|---|
+> | `SystemSerialNumber` | `XXXXXXXXXXXX` |
+> | `MLB` | `XXXXXXXXXXXXXXXXXX` |
+> | `SystemUUID` | `00000000-0000-0000-0000-000000000000` |
+> | `ROM` | `000000000000`（6 字节 0） |
+> | `bluetoothInternalControllerInfo` | 全 `0` |
+
+> 🛠 **自检 / 取证脚本在 [`scripts/`](scripts/)** —— 一条 `curl` 就能跑，不用 clone：
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/main/scripts/check-rebar-state.sh | bash
+> ```
+> 详见 [scripts/README.md](scripts/README.md)。
 
 > ⚠️ **本 EFI 是「驱动装好之后」的运行配置，不是装机配置。**
 > 它使用大 BAR（`ResizeGpuBars = 13`）并且排除了 `IONDRVSupport` —— 这两项会让**没有 NVIDIA 驱动**的 macOS 安装器黑屏。
@@ -17,19 +32,24 @@
 
 | 部件 | 型号 | 驱动 / 说明 |
 |---|---|---|
-| CPU | Intel Core i7-12700K (Alder Lake, 8P+4E) | `SSDT-PLUG-MADT.aml` |
-| 主板 | **ASUS TUF GAMING Z690-PLUS WIFI D4** | BIOS 中 **ReBAR 已开启**、Above 4G Decoding ON、CSM OFF |
-| 内存 | 32 GB DDR4 | — |
-| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.14.2**；BAR1 = 8 GB |
+| CPU | Intel Core i7-12700K (Alder Lake, 8P+4E) | `SSDT-PLUG-ALT.aml`（12 代 XCPM 处理器表）；`ProcessorType=3841` |
+| 主板 | **ASUS TUF GAMING Z690-PLUS WIFI D4** | BIOS 中 **ReBAR 已开启**、Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**（见下方 ⚠️） |
+| 内存 | 2 × 16 GB DDR4-3600 Kingston `KHX2666C16/16G`（插在 A2 / B2） | SMBIOS 由 `PlatformInfo/Memory` 注入 4 槽视图（外观项） |
+| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.14.4**；BAR1 = 8 GB |
 | 核显 | Intel UHD 770 (`8086:4680`) | **无驱动，`-wegnoigpu` 屏蔽** |
 | 有线网卡 | Intel I225-V 2.5GbE | `AppleIGC.kext` |
-| 无线 / 蓝牙 | **Broadcom BCM943602CDP**（Wi-Fi `14e4:43ba` / 蓝牙 BCM20703，USB） | `IO80211FamilyLegacy` + `AirPortBrcmNIC` + `BlueToolFixup`（**需 OCLP 根补丁**，见 §九） |
+| 无线 / 蓝牙 | **Broadcom BCM943602CDP**（Wi-Fi `14e4:43ba` / 蓝牙 BCM20703，USB） | `IO80211FamilyLegacy` + **`AirPortBrcmNIC-Tahoe.kext`** + `BlueToolFixup`（**需 OCLP 根补丁**，见 §九） |
 | 存储 | NVMe | `NVMeFix.kext` |
 | 显示器 | 1920×1080 @ 60 Hz | 建议 60 Hz |
-| 系统 | macOS 15.8.1 (24H32) | OpenCore 1.0.8 RELEASE |
+| 系统 | **macOS 26.7.1 (25G241)** | OpenCore 1.0.8 RELEASE |
+
+> ⚠️ **BIOS 硬前提：`Intel(R) Speed Shift Technology` 必须是 `Enabled`（`Auto` 也可能等效关闭）。**
+> `MacPro7,1` 机型 profile 会强制启用 HWP，OpenCore 启动时执行 `wrmsr(MSR IA32_PM_ENABLE=0x770, 1)`；
+> 若固件下 HWP 不可用，会在 `X86PlatformShim → xcpm_hwp_enable` 触发 **type 13 general protection panic**。
+> 把这一项设为 Enabled 后即通过。**遇到 `X86PlatformShim` / `xcpm_hwp_enable` 相关 panic，第一件事查这里。**
 
 > **原装 Intel Wi-Fi 6 AX201 已弃用**（Intel 网卡做不了 AirDrop / 接力 / 通用剪贴板 / Apple Watch 解锁 —— 缺 AWDL）。
-> 相关的 `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` 三个 kext 仍留在 `Kexts/` 里，但**已禁用**。
+> 相关的 `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` 三个 kext 已从本 EFI 中**移除**（不再需要）。
 
 ---
 
@@ -177,22 +197,33 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `UEFI → Quirks → ResizeGpuBars` | `13` | 8 GB BAR，完整显存带宽 |
 | `Booter → Quirks → ResizeAppleGpuBars` | `-1` | 让 macOS 看到完整 BAR |
 | `Kernel → Block` | `com.apple.iokit.IONDRVSupport`，Strategy `Exclude` | 否则固件帧缓冲会抢走 NVRMFB 的显示 index 0 |
+| `Kernel → Block` | `com.apple.iokit.IOSkywalkFamily`，Strategy `Exclude` | 让 OCLP 的 IOSkywalkFamily 生效（见 §九） |
+| `Kernel → Add` | **`CPUFriend.kext` 必须排在 `Lilu.kext` 之后**，随后是 `CPUFriendDataProvider.kext` | CPUFriend 依赖 Lilu 完成 patch |
+| `ACPI → Delete` | `SSDT` / `OemTableId = xh_adls3`（`All=false`） | 移除 BIOS 原始 `xh_adls3`，改加载修正版（见 §七） |
+| `DeviceProperties → Add` | 三条 `AAPL,slot-name`（`Slot-1` / `Slot-3` / `Slot-4`） | 「系统报告 → PCI」里显示真实槽位名；**不要动 Wi-Fi 的 `IOName`**（会失配驱动） |
+| `NVRAM → Add → 4D1FDA02-…-B30102` | `revpatch=sbvmm,cpuname`、`revcpu=1`、`revcpuname=<CPU 名称>` | 修 `MacPro7,1` 下显示成 `8-Core Intel Xeon W` 的问题（见下） |
 | `Misc → Security → SecureBootModel` | `Disabled` | Apple Secure Boot 会拒绝非 Apple 签名的 kext |
 | `Misc → Security → ExposeSensitiveData` | `7` | 让 1401 Mac app 能确认 OpenCore 是从哪个分区启动的（7 而非 15，刻意不含 OEM 信息） |
 
+> **CPU 名称显示（`MacPro7,1` 下默认会显示成 `8-Core Intel Xeon W`）**：用 `RestrictEvents` 修 ——
+> boot-args 需含 **`revpatch=sbvmm,cpuname`**，并加 **`revcpu=1`**，名称放在 NVRAM
+> `4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:revcpuname`。
+> **★ 坑：同名的 NVRAM 变量优先级低于 boot-args**，只写 NVRAM 会被 boot-args 的 `revpatch=sbvmm` 覆盖、等于没生效。
+> **`ProcessorType` 保持 `0x0F01`（= 3841，8 核及以上），不要改。**
+
 ### 还必须满足
 
-- **BIOS**：Above 4G Decoding ON、CSM OFF
-- **SMBIOS**：能跑 macOS 15 且用独显的机型（已测试：`iMacPro1,1`）
+- **BIOS**：Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**
+- **SMBIOS**：能跑 macOS 26 且用独显的机型（**已测试：`MacPro7,1`**；`iMacPro1,1` 是已验证过的可回退基线，不依赖 HWP）
 - **删掉** `nv_disable=1`、WhateverGreen 的 NVIDIA patch、`agdpmod=pikera`
-- NVIDIA 卡**不需要** `DeviceProperties`
+- NVIDIA 卡**不需要**任何功能性 `DeviceProperties`（本仓库里那三条只用于显示 PCI 槽位名，纯外观）
 
 ---
 
 ## 五、boot-args（本仓库当前值）
 
 ```
--v amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth
+-v amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=sbvmm,cpuname keepsyms=1 debug=0x144 revcpu=1
 ```
 
 | 参数 | 作用 |
@@ -204,10 +235,14 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `-wegnoigpu` | WhateverGreen：屏蔽无驱动的 Intel 核显 |
 | `nvrmsettle=1500` | 驱动 settle 时间；**必须保留**，否则 ReBAR 关闭时开机会卡 2 分钟 |
 | `nvfbsample=1` | 诊断用：每 10 s 校验一次帧缓冲 |
+| `-no_compat_check` | 让 macOS 26 在 `MacPro7,1` 上跳过机型兼容性检查 |
+| `revpatch=sbvmm,cpuname` + `revcpu=1` | RestrictEvents：修 CPU 名称显示为 `8-Core Intel Core i7-12700K`（见 §四） |
+| `keepsyms=1 debug=0x144` | panic 时保留符号 + 打开调试输出（排障用） |
 | `-v` | 详细启动日志 |
 
 > 上游驱动文档的推荐串为：`nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0`
-> —— 本机串与之等价（多了 `-v` / `-wegnoigpu` / `nvrmsettle=1500` / `nvfbsample=1` 四项本机必需的）。
+> —— 本机串与之等价（多了 `-v` / `-wegnoigpu` / `nvrmsettle=1500` / `nvfbsample=1` 等本机必需的项）。
+> **注意**：本机 boot-args 中**没有** `-nvrmnoflip` —— 大 BAR1 体制下用默认的零拷贝路径。
 
 ---
 
@@ -218,6 +253,8 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | Kext | 版本 | 来源 |
 |---|---|---|
 | Lilu | 1.7.3 | acidanthera |
+| **CPUFriend** | **1.3.0** | acidanthera（**必须排在 Lilu 之后**） |
+| **CPUFriendDataProvider** | — | 数据 = **`iMacPro1,1` 的完整机型 plist**（见下） |
 | VirtualSMC | 1.3.9 | acidanthera |
 | SMCProcessor | 1.3.9 | acidanthera |
 | SMCSuperIO | 1.3.9 | joedm |
@@ -231,7 +268,15 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | AMFIPass | 1.4.1 | dhinakg |
 | BlueToolFixup | 2.7.3 | acidanthera |
 | **IOSkywalkFamily** | 1.0 | **OCLP**（必须排在 IO80211FamilyLegacy 之前加载） |
-| **IO80211FamilyLegacy** | 12.0 | **OCLP**（内含 `AirPortBrcmNIC.kext`，BCM43602 驱动） |
+| **IO80211FamilyLegacy** | 12.0 | **OCLP**（BCM43602 的基础驱动） |
+| **AirPortBrcmNIC-Tahoe** | OCLP 3.0.0-rc.3 | **OCLP**（`MinKernel = 25.0.0`，Darwin 25 / macOS 26 上的 `pci14e4,43ba` 驱动） |
+
+> **★ CPUFriend 是干什么的**：`MacPro7,1` 的机型数据里带 `hwp="on"`，会让 macOS 在 Alder Lake 上
+> 走 HWP 硬件调频，配合那张 Xeon W 频率表产生**低频振荡**（本机实测单线程只有 2.24–2.54 GHz，
+> 且八个核频率忽高忽低 → 直接表现就是「卡顿 / 掉帧」）。
+> 用 `CPUFriendDataProvider` 注入 **`iMacPro1,1` 的完整 plist（其中没有 `hwp` 变量，走传统 XCPM P-state）** 后，
+> 单线程回到 **~4.15 GHz**、八核稳定在 **~4.19 GHz（+85%）**，振荡消失。
+> 回退 = 把这两条 `Kernel → Add` 条目设为 `Enabled=false`（或删掉两个 kext）。
 
 > **注意**：NullMoth 驱动的 4 个 kext（NVRM / NVAccel / NVRMFB / NVRMAGDC）**不在这里**，
 > 它们装在 `/Library/Extensions`，由 Auxiliary Kernel Collection 加载。
@@ -240,18 +285,42 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 
 | Kext | 版本 | 说明 |
 |---|---|---|
-| AppleALC | 1.9.9 | 板载音频，本机为排查隔离而禁用 |
-| itlwm | 2.3.0 | Intel 无线（已换 Broadcom，不再需要） |
-| IntelBluetoothFirmware | 2.5.0 | Intel 蓝牙（同上） |
-| IntelBTPatcher | 2.5.0 | Intel 蓝牙（同上） |
 | CpuTopologyRebuild | 2.0.2 | **本机启用会开不了机，务必保持禁用** |
+
+> `AppleALC` / `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` 已从本 EFI 中**完全移除**（不再需要）。
 
 ## 七、Drivers / ACPI / Tools
 
 - **Drivers**：`OpenRuntime.efi`、`OpenHfsPlus.efi`、`ResetNvramEntry.efi`、`OpenCanopy.efi`、**`NullMothLogo.efi`**
-- **ACPI**（启用 4 个）：`SSDT-EC.aml`、`SSDT-PLUG-MADT.aml`、`SSDT-RTCAWAC.aml`、`SSDT-USBX.aml`（`SSDT-SBUS-MCHC.aml` 存在但**禁用**）
+- **ACPI**（启用 5 个）：`SSDT-EC.aml`、`SSDT-RTCAWAC.aml`、`SSDT-USBX.aml`、**`SSDT-PLUG-ALT.aml`**（12 代 XCPM 处理器表）、**`SSDT-XH_ADLS3.aml`**
+  - 目录里另有 `SSDT-PLUG-MADT.aml` / `SSDT-PLUG-DRTNIA.aml` / `SSDT-SBUS-MCHC.aml`，**均禁用**（前者 CPU 命名空间不对，第二个是 12 代对比用的 Dortania 版）。
+  - **`ACPI → Delete`**：`TableSignature = SSDT`、`OemTableId = xh_adls3`、`All = false` ——
+    先移除 ASUS Z690 BIOS 自带的 `xh_adls3`，再加载修正版 `SSDT-XH_ADLS3.aml`，
+    否则原表引用了不存在的 `\_SB.PC00.XHCI.RHUB.HS06`，启动时刷 `AE_NOT_FOUND`。
 - **Tools**：`OpenShell.efi`、`NullMothSafe.efi` ×2 条 —— 分别对应启动菜单里的
   **「NullMoth: remove the NVIDIA driver at the next start」** 与 **「NullMoth: start macOS once without the NVIDIA driver」**（救援入口）
+
+## 自检 / 取证脚本（[`scripts/`](scripts/)）
+
+配套 [ReBAR 完全指南] 的一组诊断脚本。**不依赖本仓库的 EFI**，任何装了 NullMoth 驱动的机器都能跑；
+**不需要装任何东西**（除 macOS 自带的 `bash` / `python3` / `screencapture`），脚本里**没有写死用户名或路径**。
+
+```bash
+# 直接跑（不用 clone）
+curl -fsSL https://raw.githubusercontent.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/main/scripts/check-rebar-state.sh | bash
+```
+
+| 脚本 | 干什么 | root？ |
+|---|---|---|
+| **`check-rebar-state.sh`** | ★ 开机后先跑这个：BAR1 实际大小、预算、用量、显示 arm 状态、AGDC GPU 列表、开机耗时 | 否 |
+| `verify-iop-flip-ab.sh` | 在拷贝路径 / 零拷贝之间来回切，判定重影/黑块是不是驱动输出路径问题 | 是（弹一次密码框） |
+| `check-surfdirty.sh` | 统计 WindowServer surface **脏标记被拒绝**的比例 | 否 |
+| `capture-ghost-pack.sh` | 重影**出现时**跑一次，把整屏/窗口截图 + 驱动计数器 + 按启动分段的 surfvram 统计收进一个目录 | 否 |
+| `watch-ghost.sh` | 重影**自动连拍**，你只管复现，事后按时间点回看 | 否 |
+| `cpu-freq-probe.sh` | 实测 CPU 真实核心频率（`mulsd` 依赖链 + 内联汇编，防编译器折叠） | 否 |
+
+- 输出目录默认取**当前目录**，可用 `OUTDIR=~/Desktop bash capture-ghost-pack.sh` 覆盖。
+- 每个脚本的详细用法、判读口诀见 **[scripts/README.md](scripts/README.md)**。
 
 ## 八、Kernel → Block
 
@@ -268,10 +337,14 @@ com.apple.iokit.IOSkywalkFamily    ← OCLP Modern Wireless：允许降级到 OC
 这套方案**分 EFI 侧和系统侧两部分，缺一不可**：
 
 **EFI 侧（本仓库已含）**
-- `Kernel → Add` 新增 `IOSkywalkFamily` 与 `IO80211FamilyLegacy`（内含 `AirPortBrcmNIC.kext`）—— **顺序不能反**
+- `Kernel → Add` 新增 `IOSkywalkFamily` 与 `IO80211FamilyLegacy` —— **顺序不能反**
+- `Kernel → Add` 新增 **`AirPortBrcmNIC-Tahoe.kext`**（`MinKernel = 25.0.0`，OCLP 3.0.0-rc.3）——
+  **macOS 26 / Darwin 25 需要它**：`IO80211FamilyLegacy` 内自带的那个 `AirPortBrcmNIC` 插件
+  `MaxKernel = 24.99.99`，在 Darwin 25 上不生效，所以要单独挂一个 Tahoe 版。
 - `Kernel → Block` 屏蔽 `com.apple.iokit.IOSkywalkFamily`（让 OCLP 的版本生效）
 - 启用 `BlueToolFixup`
 - `NVRAM` 新增 `bluetoothExternalDongleFailed` / `bluetoothInternalControllerInfo`
+  （**本仓库里后者的蓝牙地址已清零**，macOS 会自行重填）
 
 **系统侧（不在本仓库，必须自己做）**
 - 用 [OpenCore Legacy Patcher](https://github.com/dortania/OpenCore-Legacy-Patcher) 打 **Post-Install Root Patch**，
@@ -308,10 +381,22 @@ build/accel_build.sh <src> <out>     # kexts
 - 显示器**建议使用 60 Hz**，但**不要**把这些现象归因于 50 Hz —— 它们是驱动侧（NVIDIA 显示 / 合成路径）的问题。
 - 上游问题跟踪：<https://github.com/nullmoth/nvidia-macos-driver/issues>
 
+> **★ 重影 / 黑窗由 BAR1 大小门控**（本机 A/B + 四档二分实测，上游 issue #127）：
+> 只要驱动看到的 `fBarLen >= 4 GB`（4 / 8 / 16 GB 都算），重影就可能出现；
+> **256 MB 原厂档不会出现**。与之相对，`< 4 GB` 时图形内存预算被写死 192 MB，
+> 会出现「拒绝洪水」和闪黑帧。**预算公式**（`kexts/NVRM/fb/nvrm-fb.cpp`）：
+> `budget = (BAR1 >= 4GB) ? BAR1/2 : 192 MB`。
+> 换句话说：**「有重影」和「预算宽松」是同一个开关的两面**，不能只要其一。
+
+> **macOS 26 (Tahoe) 上的复测状态**：升级到 macOS 26.7.1 后，
+> **#73 的窗口遮挡重影暂未复现**（kext 与升级前逐字节相同，样本不足，尚不能下结论）；
+> **#74 的 Preview 纯色黑块仍能复现**。
+
 ## 十二、更新日志
 
 | 日期 | 变更 |
 |---|---|
+| 2026-10-13 | 系统升到 **macOS 26.7.1 (25G241)**；SMBIOS 换 **`MacPro7,1`**（BIOS 需 `Intel Speed Shift Technology = Enabled`）；加 **CPUFriend + CPUFriendDataProvider** 修 CPU 限频；ACPI 换 `SSDT-PLUG-ALT` + `SSDT-XH_ADLS3`（配 `ACPI → Delete`）；加 `AirPortBrcmNIC-Tahoe.kext`（Darwin 25 Wi-Fi）；`DeviceProperties` 加 PCI 槽位名；boot-args 加 `-no_compat_check` / `revpatch` / `revcpu`；瘦身（移除 AppleALC / itlwm / Intel 蓝牙三件套）；**新增 [`scripts/`](scripts/) 诊断脚本** |
 | 2026-10-12 | 驱动升到 **1.14.2**；换 **BCM943602CDP**（EFI 加 IOSkywalkFamily + IO80211FamilyLegacy，Block 收敛为 2 条，启用 BlueToolFixup）；`SSDT-SBUS-MCHC` 禁用；新增 `NullMothLogo.efi` 与两条 `NullMothSafe.efi` 救援项；boot-args 归位为当前串 |
 | 2026-10-11 | 对齐 1401 / 驱动文档：boot-args 增 `ipc_control_port_options=0`；`ExposeSensitiveData` 0 → 7 |
 | 2026-10-11 | 首次发布：主板更正为 TUF GAMING Z690-PLUS WIFI D4（ReBAR 已开）；补 1401 构建流程、驱动引用、已知问题、致谢 |
@@ -355,5 +440,5 @@ build/accel_build.sh <src> <out>     # kexts
 
 - 本仓库的 OpenCore 配置：个人配置备份，仅供参考。
 - 1401 / NullMoth 驱动：**PolyForm Noncommercial License 1.0.0**，免费但**禁止任何商业用途**；翻译器为 LGPL-3.0，NVK 部分为 Mesa (MIT)。
-- `IOSkywalkFamily.kext` / `IO80211FamilyLegacy.kext` 来自 **OpenCore Legacy Patcher**（遵循其自身许可）。
+- `IOSkywalkFamily.kext` / `IO80211FamilyLegacy.kext` / `AirPortBrcmNIC-Tahoe.kext` 来自 **OpenCore Legacy Patcher**（遵循其自身许可）。
 - NullMoth 名称与飞蛾 logo 属 NullMoth Systems，不在许可范围内。
