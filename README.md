@@ -23,7 +23,7 @@
 > 详见 [scripts/README.md](scripts/README.md)。
 
 > ⚠️ **本 EFI 是「驱动装好之后」的运行配置，不是装机配置。**
-> 它使用大 BAR（`ResizeGpuBars = -1` ⇒ 16 GB）并且排除了 `IONDRVSupport` —— 这两项会让**没有 NVIDIA 驱动**的 macOS 安装器黑屏。
+> 它使用大 BAR（`ResizeGpuBars = 13` ⇒ 8 GB）并且排除了 `IONDRVSupport` —— 这两项会让**没有 NVIDIA 驱动**的 macOS 安装器黑屏。
 > 全新安装请走下面的 **1401 流程**（1401 会为安装器自动生成小 BAR 的配置）。
 
 ---
@@ -35,7 +35,7 @@
 | CPU | Intel Core i7-12700K (Alder Lake, 8P+4E) | `SSDT-PLUG-ALT.aml`（12 代 XCPM 处理器表）；`ProcessorType=3841` |
 | 主板 | **ASUS TUF GAMING Z690-PLUS WIFI D4** | BIOS 中 **ReBAR 已开启**、Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**（见下方 ⚠️） |
 | 内存 | 2 × 16 GB DDR4-3600 Kingston `KHX2666C16/16G`（插在 A2 / B2） | SMBIOS 由 `PlatformInfo/Memory` 注入 4 槽视图（外观项） |
-| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.15.0**；BAR1 = 16 GB（`ResizeGpuBars = -1`） |
+| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.15.0**；BAR1 = 8 GB（`ResizeGpuBars = 13`） |
 | 核显 | Intel UHD 770 (`8086:4680`) | **无驱动，`-wegnoigpu` 屏蔽** |
 | 有线网卡 | Intel I225-V 2.5GbE | `AppleIGC.kext` |
 | 无线 / 蓝牙 | **Broadcom BCM943602CDP**（Wi-Fi `14e4:43ba` / 蓝牙 BCM20703，USB） | `IO80211FamilyLegacy` + **`AirPortBrcmNIC-Tahoe.kext`** + `BlueToolFixup`（**需 OCLP 根补丁**，见 §九） |
@@ -194,7 +194,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 
 | 位置 | 值 | 原因 |
 |---|---|---|
-| `UEFI → Quirks → ResizeGpuBars` | `-1` | 固件自放 BAR（本机当前实测值，BAR1 = 16 GB）。⚠️ 早期为 `13`（8 GB）；1.14.7 起安装器改为「保留既有设置」，不再强制写 `13` |
+| `UEFI → Quirks → ResizeGpuBars` | `13` | 8 GB BAR1，**作者验证过的值**（作者把驱动上限压死在 8 GB，理由是「16 GB 会在 bring-up 停住」）。⚠️ 代价：开机 ~21 s 死画面（停在 ACPI 页）。回退条件：开机卡 >2 分钟 ⇒ 改 `12`（4 GB）或关 ReBAR |
 | `Booter → Quirks → ResizeAppleGpuBars` | `-1` | 让 macOS 看到完整 BAR |
 | `Kernel → Block` | `com.apple.iokit.IONDRVSupport`，Strategy `Exclude` | 否则固件帧缓冲会抢走 NVRMFB 的显示 index 0 |
 | `Kernel → Block` | `com.apple.iokit.IOSkywalkFamily`，Strategy `Exclude` | 让 OCLP 的 IOSkywalkFamily 生效（见 §九） |
@@ -426,6 +426,7 @@ build/accel_build.sh <src> <out>     # kexts
 
 | 日期 | 变更 |
 |---|---|
+| 2026-10-13 | **跟随作者**：`ResizeGpuBars` **`-1` → `13`**（8 GB，作者验证范围）；同时把 ESP 的 `Kernel/Block → IONDRVSupport` 从 `false` 补成 **`true`**（装 Tahoe 后漏做的回填）。ESP / 桌面部署母本 / 本仓库三方现已一致 |
 | 2026-10-13 | **EFI 同步**：`ResizeGpuBars` `13` → **`-1`**（16 GB）；`config.plist` 与当前 `~/Desktop/EFI/OC/config.plist` 部署母本逐项对齐（仅脱敏字段不同）；README 正文的驱动版本 / BAR1 数值订正 |
 | 2026-10-13 | 驱动升到 **1.15.0**（`-nvrmsmallbar` 等）；补记 `ResizeGpuBars` **当前实测为 `-1`（16 GB）**、`ResizeAppleGpuBars = -1`；已知问题补 30.5″ 电视误报；§五 增 `-nvrmsmallbar` 说明 |
 | 2026-10-13 | 系统升到 **macOS 26.7.1 (25G241)**；SMBIOS 换 **`MacPro7,1`**（BIOS 需 `Intel Speed Shift Technology = Enabled`）；加 **CPUFriend + CPUFriendDataProvider** 修 CPU 限频；ACPI 换 `SSDT-PLUG-ALT` + `SSDT-XH_ADLS3`（配 `ACPI → Delete`）；加 `AirPortBrcmNIC-Tahoe.kext`（Darwin 25 Wi-Fi）；`DeviceProperties` 加 PCI 槽位名；boot-args 加 `-no_compat_check` / `revpatch` / `revcpu`；瘦身（移除 AppleALC / itlwm / Intel 蓝牙三件套）；**新增 [`scripts/`](scripts/) 诊断脚本** |
