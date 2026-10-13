@@ -271,6 +271,8 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 - 用途：想验证「某症状是不是大 BAR1 引起的」时，**不用断电、不用拨杆**即可做 A/B；实验完请撤掉（32 MB 比原厂 256 MB 还小，等于主动放弃 ReBAR 全部好处）。
 - 判读：`sysctl debug.nvrmfb_vram_budget_bytes` 应变成 **201326592**（192 MB）；若仍是 4096/8192 MB，说明没进小 BAR 体制。
 - ⚠️ **macOS 26 起无法在系统内写 boot-args**（`nvram boot-args=…` 报 `(iokit/common) general error (1)`），只能改 EFI 的 `config.plist`，改完必须重启。
+- ⚠️ **它只掐掉「放大 + 重定位」，不保证修好下游任何问题。** 上游 [#185](https://github.com/nullmoth/nvidia-macos-driver/issues/185) 里加了它，
+  重定位 / 光圈表重建确实不再执行，但 `RmInitAdapter()` 仍以完全相同的方式失败。⇒ 当成**变量隔离工具**，别当万能修复（详见 §十一）。
 
 ---
 
@@ -411,6 +413,33 @@ build/accel_build.sh <src> <out>     # kexts
 - 上游问题跟踪：<https://github.com/nullmoth/nvidia-macos-driver/issues>
 - **1.15.0 的状态**：重影 / 黑窗 bug **仍列在其 CHANGELOG 的 Known issues 里**（"Ghost or black areas after windows overlap with a BAR of 4 GB or more (#127)"）⇒ 1.15.0 **没有修**这个问题。
 
+### 与本机无关、但换卡/换机前该知道的一类失败：上游 #185
+
+上游 [#185](https://github.com/nullmoth/nvidia-macos-driver/issues/185)（2026-10-13 报出，**open，作者未回复**）是一台
+**RTX 4060 Laptop + Ryzen 9 7945HX** 笔记本，症状是**连驱动都起不来** —— 与本机的重影 bug **不是一回事**：
+
+```text
+bar1: Resizable BAR capability @0xbb0 says BAR1 = 8192 MB          ← 本来就已经是 8 GB
+bar1: placing BAR1 8192 MB @0x3ffa00000000, BAR3 32 MB …           ← 驱动仍去做重定位
+bar1: placed in hardware but the aperture list could not be built (no memory)
+auto-go: go(2) in 100000 ms on its own thread (BAR1 not placed)    ← 于是又吃满 100 秒盲睡
+… RmInitAdapter() →
+NVRM: kbusVerifyBar2_GM107: MMUTest BAR0 window offset 0x70e000 returned garbage 0x0
+NVRM: NV_ERR_MEMORY_ERROR (0x00000072) … RmInitAdapter failed! (0x24:0x72:1281)
+```
+
+三个要点：
+
+1. **「已经是大 BAR1」≠「驱动就放过它」。** 驱动跳过的是「放大」那一步，「搬到 ≥4 GB 高地址 + 重建光圈表」照做 —— 这台机器就死在这一步。
+2. **`-nvrmsmallbar` 在这台机器上没救回来。** 升到 1.15.0 加了这个参数后，重定位 / 光圈表重建确实不再执行，但 `RmInitAdapter()` **仍以完全相同的方式失败** ⇒ 光圈表重建失败**不是**复现该 BAR2 失败的必需条件。
+3. **100 秒盲睡的判据是 `placeLargeBar1()` 的返回值，不只是「BAR1 放没放上」。** 这里硬件上放成功了，但函数因光圈表建不起来而返回 `false`，驱动照样判「BAR1 not placed」。⇒ `nvrmsettle` 对这类情况**同样有效**（它覆盖的是等待时长）。
+
+**本机的对照**：本机 `ioreg` 读数为 `bar0@0x10` / **`bar1@0x14`** / `bar2@0x1c` —— 三个槽各就各位、`0x14`（FB）在；
+且本机全部历史日志中 `aperture list could not be built` / `kbusVerifyBar2` / `0x72` 的命中数均为 **0**。
+⇒ 这是一台正常机器与该故障机器之间最直接的分界证据。
+
+> 报告中提到的 `readBARs()` 槽位错配（`0x14` 缺失时 `0x1c` 顶替进 FB 槽）**是报告者自己写明的假设，尚未证实**，请勿当作结论。
+
 > **★ 重影 / 黑窗由 BAR1 大小门控**（本机 A/B + 四档二分实测，上游 issue #127）：
 > 只要驱动看到的 `fBarLen >= 4 GB`（4 / 8 / 16 GB 都算），重影就可能出现；
 > **256 MB 原厂档不会出现**。与之相对，`< 4 GB` 时图形内存预算被写死 192 MB，
@@ -428,7 +457,8 @@ build/accel_build.sh <src> <out>     # kexts
 |---|---|
 | 2026-10-13 | **跟随作者**：`ResizeGpuBars` **`-1` → `13`**（8 GB，作者验证范围）；同时把 ESP 的 `Kernel/Block → IONDRVSupport` 从 `false` 补成 **`true`**（装 Tahoe 后漏做的回填）。ESP / 桌面部署母本 / 本仓库三方现已一致 |
 | 2026-10-13 | **EFI 同步**：`ResizeGpuBars` `13` → **`-1`**（16 GB）；`config.plist` 与当前 `~/Desktop/EFI/OC/config.plist` 部署母本逐项对齐（仅脱敏字段不同）；README 正文的驱动版本 / BAR1 数值订正 |
-| 2026-10-13 | 驱动升到 **1.15.0**（`-nvrmsmallbar` 等）；补记 `ResizeGpuBars` **当前实测为 `-1`（16 GB）**、`ResizeAppleGpuBars = -1`；已知问题补 30.5″ 电视误报；§五 增 `-nvrmsmallbar` 说明 |
+| 2026-10-13 | 驱动升到 **1.15.0**（`-nvrmsmallbar` 等）；补记当时 `ResizeGpuBars` 实测为 `-1`（16 GB）——**当晚 22:46 已改回 `13`，以本行下方的最终行为准**；`ResizeAppleGpuBars = -1`；已知问题补 30.5″ 电视误报；§五 增 `-nvrmsmallbar` 说明 |
+| 2026-10-13 深夜 | 补记上游 **#185**（RTX 4060 Laptop：BAR1 本来已是 8 GB 仍被重定位 ⇒ 光圈表重建失败 ⇒ `RmInitAdapter failed! (0x24:0x72:1281)`）；§十一 增一条「与本机无关但值得知道」的条目 |
 | 2026-10-13 | 系统升到 **macOS 26.7.1 (25G241)**；SMBIOS 换 **`MacPro7,1`**（BIOS 需 `Intel Speed Shift Technology = Enabled`）；加 **CPUFriend + CPUFriendDataProvider** 修 CPU 限频；ACPI 换 `SSDT-PLUG-ALT` + `SSDT-XH_ADLS3`（配 `ACPI → Delete`）；加 `AirPortBrcmNIC-Tahoe.kext`（Darwin 25 Wi-Fi）；`DeviceProperties` 加 PCI 槽位名；boot-args 加 `-no_compat_check` / `revpatch` / `revcpu`；瘦身（移除 AppleALC / itlwm / Intel 蓝牙三件套）；**新增 [`scripts/`](scripts/) 诊断脚本** |
 | 2026-10-12 | 驱动升到 **1.14.2**；换 **BCM943602CDP**（EFI 加 IOSkywalkFamily + IO80211FamilyLegacy，Block 收敛为 2 条，启用 BlueToolFixup）；`SSDT-SBUS-MCHC` 禁用；新增 `NullMothLogo.efi` 与两条 `NullMothSafe.efi` 救援项；boot-args 归位为当前串 |
 | 2026-10-11 | 对齐 1401 / 驱动文档：boot-args 增 `ipc_control_port_options=0`；`ExposeSensitiveData` 0 → 7 |
