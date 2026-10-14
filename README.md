@@ -3,8 +3,15 @@
 一台 Alder Lake + NVIDIA RTX 3080 黑苹果的 OpenCore EFI 备份，SMBIOS 为 **MacPro7,1**，系统 **macOS 26.7.1 (25G241 / Darwin 25.6.0)**。
 显卡由 **NullMoth NVIDIA 驱动 1.15.0** 驱动（Turing 及以后），核显无驱动、已屏蔽；无线改用 **Broadcom BCM943602CDP**。
 
-> ⚠️ **序列号已脱敏**：`config.plist` 中的 `SystemSerialNumber` / `MLB` / `SystemUUID` / `ROM`
-> 以及蓝牙控制器地址已替换为**明显的占位值**（全 `X` / 全 `0`，见下）。
+> ⚠️ **发布前已做两件事：脱敏 + 移除机器特有内容**
+>
+> **① 脱敏**：`SystemSerialNumber` / `MLB` / `SystemUUID` / `ROM` 以及蓝牙控制器地址
+> 已替换为**明显的占位值**（全 `X` / 全 `0`，见下表）。
+>
+> **② 移除**：下面两段**已整段删除**（它们只影响「系统报告」里的外观，且会带出本机硬件信息）：
+> - `DeviceProperties → Add` —— PCI 槽位名注入（含本机独有设备：UA UAD-2 DUO 等）
+> - `PlatformInfo → Memory` —— 内存条视图注入（含内存条序列号 / 型号），`CustomMemory` 已改回 `false`
+>
 > 使用前请用 [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) 生成属于你自己的 **MacPro7,1** 三码，
 > 否则 iMessage / FaceTime / iCloud 无法激活，也可能与他人冲突。
 >
@@ -32,9 +39,9 @@
 
 | 部件 | 型号 | 驱动 / 说明 |
 |---|---|---|
-| CPU | Intel Core i7-12700K (Alder Lake, 8P+4E) | `SSDT-PLUG-ALT.aml`（12 代 XCPM 处理器表）；`ProcessorType=3841` |
+| CPU | Intel Core i7-12700K (Alder Lake, 8P+4E) | `SSDT-PLUG-ADL.aml`（12 代 XCPM 处理器表）；`ProcessorType=3841` |
 | 主板 | **ASUS TUF GAMING Z690-PLUS WIFI D4** | BIOS 中 **ReBAR 已开启**、Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**（见下方 ⚠️） |
-| 内存 | 2 × 16 GB DDR4-3600 Kingston `KHX2666C16/16G`（插在 A2 / B2） | SMBIOS 由 `PlatformInfo/Memory` 注入 4 槽视图（外观项） |
+| 内存 | 2 × 16 GB DDR4-3600 Kingston `KHX2666C16/16G`（插在 A2 / B2） | 走真实 SMBIOS，**不做内存注入**（本仓库已把 `PlatformInfo/Memory` 整段移除，见顶部 ⚠️） |
 | 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.15.0**；BAR1 = 8 GB（`ResizeGpuBars = 13`） |
 | 核显 | Intel UHD 770 (`8086:4680`) | **无驱动，`-wegnoigpu` 屏蔽** |
 | 有线网卡 | Intel I225-V 2.5GbE | `AppleIGC.kext` |
@@ -200,10 +207,15 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `Kernel → Block` | `com.apple.iokit.IOSkywalkFamily`，Strategy `Exclude` | 让 OCLP 的 IOSkywalkFamily 生效（见 §九） |
 | `Kernel → Add` | **`CPUFriend.kext` 必须排在 `Lilu.kext` 之后**，随后是 `CPUFriendDataProvider.kext` | CPUFriend 依赖 Lilu 完成 patch |
 | `ACPI → Delete` | `SSDT` / `OemTableId = xh_adls3`（`All=false`） | 移除 BIOS 原始 `xh_adls3`，改加载修正版（见 §七） |
-| `DeviceProperties → Add` | 三条 `AAPL,slot-name`（`Slot-1` / `Slot-3` / `Slot-4`） | 「系统报告 → PCI」里显示真实槽位名；**不要动 Wi-Fi 的 `IOName`**（会失配驱动） |
 | `NVRAM → Add → 4D1FDA02-…-B30102` | `revpatch=sbvmm,cpuname`、`revcpu=1`、`revcpuname=<CPU 名称>` | 修 `MacPro7,1` 下显示成 `8-Core Intel Xeon W` 的问题（见下） |
 | `Misc → Security → SecureBootModel` | `Disabled` | Apple Secure Boot 会拒绝非 Apple 签名的 kext |
 | `Misc → Security → ExposeSensitiveData` | `7` | 让 1401 Mac app 能确认 OpenCore 是从哪个分区启动的（7 而非 15，刻意不含 OEM 信息） |
+
+> **本仓库已移除的两段（发布用）**：
+> - `DeviceProperties → Add` 置空 —— 原本有 3 条 `AAPL,slot-name`（`Slot-1` / `Slot-3` / `Slot-4`），
+>   只让「系统报告 → PCI」显示真实槽位名，**纯外观**；但它会带出本机独有设备（Broadcom 卡、**UA UAD-2 DUO**）。
+>   想恢复：按自己的 PCI 路径加回 `AAPL,slot-name`；**不要动 Wi-Fi 的 `IOName`**（会失配驱动）。
+> - `PlatformInfo → Memory` 整段删除、`CustomMemory = false` —— 原本注入 12 槽内存视图（含内存条序列号 / 型号）。
 
 > **CPU 名称显示（`MacPro7,1` 下默认会显示成 `8-Core Intel Xeon W`）**：用 `RestrictEvents` 修 ——
 > boot-args 需含 **`revpatch=sbvmm,cpuname`**，并加 **`revcpu=1`**，名称放在 NVRAM
@@ -216,7 +228,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 - **BIOS**：Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**
 - **SMBIOS**：能跑 macOS 26 且用独显的机型（**已测试：`MacPro7,1`**；`iMacPro1,1` 是已验证过的可回退基线，不依赖 HWP）
 - **删掉** `nv_disable=1`、WhateverGreen 的 NVIDIA patch、`agdpmod=pikera`
-- NVIDIA 卡**不需要**任何功能性 `DeviceProperties`（本仓库里那三条只用于显示 PCI 槽位名，纯外观）
+- NVIDIA 卡**不需要**任何功能性 `DeviceProperties`（本仓库的 `DeviceProperties → Add` 已置空）
 
 ---
 
@@ -313,19 +325,20 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 
 ### 已放置但**禁用**（`Enabled = false`）
 
-| Kext | 版本 | 说明 |
+| Kext | 版本范围 | 说明 |
 |---|---|---|
-| CpuTopologyRebuild | 2.0.2 | **本机启用会开不了机，务必保持禁用** |
+| `IO80211FamilyLegacy.kext/Contents/PlugIns/AirPortBrcmNIC.kext` | `MinKernel 23.0.0` / `MaxKernel 24.99.99` | 同一条 BCM43602 驱动的 **Sequoia 版**。macOS 26 走单独的 `AirPortBrcmNIC-Tahoe.kext`（`MinKernel 25.0.0`）⇒ 这里保持禁用 |
 
-> `AppleALC` / `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` 已从本 EFI 中**完全移除**（不再需要）。
+> `AppleALC` / `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` / `CpuTopologyRebuild` 已从本 EFI 中**完全移除**。
 
 ## 七、Drivers / ACPI / Tools
 
-- **Drivers**：`OpenRuntime.efi`、`OpenHfsPlus.efi`、`ResetNvramEntry.efi`、`OpenCanopy.efi`、**`NullMothLogo.efi`**
-- **ACPI**（启用 5 个）：`SSDT-EC.aml`、`SSDT-RTCAWAC.aml`、`SSDT-USBX.aml`、**`SSDT-PLUG-ALT.aml`**（12 代 XCPM 处理器表）、**`SSDT-XH_ADLS3.aml`**
-  - 目录里另有 `SSDT-PLUG-MADT.aml` / `SSDT-PLUG-DRTNIA.aml` / `SSDT-SBUS-MCHC.aml`，**均禁用**（前者 CPU 命名空间不对，第二个是 12 代对比用的 Dortania 版）。
+- **Drivers**：`OpenRuntime.efi`、`OpenHfsPlus.efi`、`ResetNvramEntry.efi`、`OpenCanopy.efi`
+  - 目录里另有 `NullMothLogo.efi`（NullMoth 开机 logo，**当前未启用**；不想要可在 `UEFI → Drivers` 里关掉）
+- **ACPI**（启用 6 个）：`SSDT-EC.aml`、`SSDT-RTC-AWAC.aml`、`SSDT-USBX.aml`、`SSDT-SBUS-MCHC.aml`、**`SSDT-PLUG-ADL.aml`**（12 代 XCPM 处理器表）、**`SSDT-XHADLS3.aml`**
+  - 目录里另有 `disabled/` 子目录：`SSDT-PLUG-MADT.aml`、`SSDT-PLUG-DRTNIA.aml`，**均禁用**（CPU 命名空间不对 / 12 代对比用的 Dortania 版）。
   - **`ACPI → Delete`**：`TableSignature = SSDT`、`OemTableId = xh_adls3`、`All = false` ——
-    先移除 ASUS Z690 BIOS 自带的 `xh_adls3`，再加载修正版 `SSDT-XH_ADLS3.aml`，
+    先移除 ASUS Z690 BIOS 自带的 `xh_adls3`，再加载修正版 `SSDT-XHADLS3.aml`，
     否则原表引用了不存在的 `\_SB.PC00.XHCI.RHUB.HS06`，启动时刷 `AE_NOT_FOUND`。
 - **Tools**：`OpenShell.efi`、`NullMothSafe.efi` ×2 条 —— 分别对应启动菜单里的
   **「NullMoth: remove the NVIDIA driver at the next start」** 与 **「NullMoth: start macOS once without the NVIDIA driver」**（救援入口）
@@ -487,6 +500,7 @@ NVRM: NV_ERR_MEMORY_ERROR (0x00000072) … RmInitAdapter failed! (0x24:0x72:1281
 
 | 日期 | 变更 |
 |---|---|
+| 2026-10-14 | **同步到当前 ESP + 发布前清理**：EFI 全量同步（ACPI 改名 `SSDT-PLUG-ADL` / `SSDT-RTC-AWAC` / `SSDT-XHADLS3` + `disabled/` 子目录；移除 `CpuTopologyRebuild`；`NullMothLogo.efi` 未启用）。**移除 `DeviceProperties → Add`（PCI 槽位名注入）与 `PlatformInfo → Memory`（内存条视图注入）**，`CustomMemory = false` —— 两者只影响「系统报告」外观且携带本机硬件信息 |
 | 2026-10-13 | **跟随作者**：`ResizeGpuBars` **`-1` → `13`**（8 GB，作者验证范围）；同时把 ESP 的 `Kernel/Block → IONDRVSupport` 从 `false` 补成 **`true`**（装 Tahoe 后漏做的回填）。ESP / 桌面部署母本 / 本仓库三方现已一致 |
 | 2026-10-13 | **EFI 同步**：`ResizeGpuBars` `13` → **`-1`**（16 GB）；`config.plist` 与当前 `~/Desktop/EFI/OC/config.plist` 部署母本逐项对齐（仅脱敏字段不同）；README 正文的驱动版本 / BAR1 数值订正 |
 | 2026-10-13 | 驱动升到 **1.15.0**（`-nvrmsmallbar` 等）；补记当时 `ResizeGpuBars` 实测为 `-1`（16 GB）——**当晚 22:46 已改回 `13`，以本行下方的最终行为准**；`ResizeAppleGpuBars = -1`；已知问题补 30.5″ 电视误报；§五 增 `-nvrmsmallbar` 说明 |
