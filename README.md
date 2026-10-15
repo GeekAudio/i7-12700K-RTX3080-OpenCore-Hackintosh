@@ -1,6 +1,6 @@
 # ASUS TUF GAMING Z690-PLUS WIFI D4 + i7-12700K + RTX 3080 — OpenCore EFI
 
-一台 Alder Lake + NVIDIA RTX 3080 黑苹果的 OpenCore EFI 备份，SMBIOS 为 **MacPro7,1**，系统 **macOS 26.7.1 (25G241 / Darwin 25.6.0)**。
+一台 Alder Lake + NVIDIA RTX 3080 黑苹果的 OpenCore EFI 备份，SMBIOS 为 **iMac20,1**，系统 **macOS 26.7.1 (25G241 / Darwin 25.6.0)**。
 显卡由 **NullMoth NVIDIA 驱动 1.15.0** 驱动（Turing 及以后），核显无驱动、已屏蔽；无线改用 **Broadcom BCM943602CDP**。
 
 > ⚠️ **发布前已做两件事：脱敏 + 移除机器特有内容**
@@ -12,7 +12,7 @@
 > - `DeviceProperties → Add` —— PCI 槽位名注入（含本机独有设备：UA UAD-2 DUO 等）
 > - `PlatformInfo → Memory` —— 内存条视图注入（含内存条序列号 / 型号），`CustomMemory` 已改回 `false`
 >
-> 使用前请用 [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) 生成属于你自己的 **MacPro7,1** 三码，
+> 使用前请用 [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) 生成属于你自己的 **iMac20,1** 三码，
 > 否则 iMessage / FaceTime / iCloud 无法激活，也可能与他人冲突。
 >
 > | 字段 | 本仓库占位值 |
@@ -42,21 +42,27 @@
 | CPU | Intel Core i7-12700K (Alder Lake, 8P+4E) | `SSDT-PLUG-ADL.aml`（12 代 XCPM 处理器表）；`ProcessorType=3841` |
 | 主板 | **ASUS TUF GAMING Z690-PLUS WIFI D4** | BIOS 中 **ReBAR 已开启**、Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**（见下方 ⚠️） |
 | 内存 | 2 × 16 GB DDR4-3600 Kingston `KHX2666C16/16G`（插在 A2 / B2） | 走真实 SMBIOS，**不做内存注入**（本仓库已把 `PlatformInfo/Memory` 整段移除，见顶部 ⚠️） |
-| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.15.0**；BAR1 = 8 GB（`ResizeGpuBars = 13`） |
+| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.15.0**；BAR1 = 8 GB（`ResizeGpuBars = 13`）。⚠️ 本机那份另打了 **PR #199 的 HiDPI / 显示器尺寸改动 + 一个本地补丁**（本仓库不含，`NVMTLDriver` 插件 sha 与 stock 1.15.0 不同） |
 | 核显 | Intel UHD 770 (`8086:4680`) | **无驱动，`-wegnoigpu` 屏蔽** |
-| 有线网卡 | Intel I225-V 2.5GbE | `AppleIGC.kext` |
+| 有线网卡 | Intel I225-V 2.5GbE | `AppleIGC.kext` —— **本机 `Enabled = false`**（刻意的：让无线抢到 `en0`，见 §九） |
 | 无线 / 蓝牙 | **Broadcom BCM943602CDP**（Wi-Fi `14e4:43ba` / 蓝牙 BCM20703，USB） | `IO80211FamilyLegacy` + **`AirPortBrcmNIC-Tahoe.kext`** + `BlueToolFixup`（**需 OCLP 根补丁**，见 §九） |
 | 存储 | NVMe | `NVMeFix.kext` |
-| 显示器 | 1920×1080 @ 60 Hz | 建议 60 Hz |
+| 显示器 | Redmi 215 NF，1920×1080 @ 60 Hz | 建议 60 Hz；驱动侧已修「被识别成 30.5″ 电视」（PR #199） |
 | 系统 | **macOS 26.7.1 (25G241)** | OpenCore 1.0.8 RELEASE |
 
 > ⚠️ **BIOS 硬前提：`Intel(R) Speed Shift Technology` 必须是 `Enabled`（`Auto` 也可能等效关闭）。**
-> `MacPro7,1` 机型 profile 会强制启用 HWP，OpenCore 启动时执行 `wrmsr(MSR IA32_PM_ENABLE=0x770, 1)`；
+> `iMac20,1` 机型 profile 会强制启用 HWP，OpenCore 启动时执行 `wrmsr(MSR IA32_PM_ENABLE=0x770, 1)`；
 > 若固件下 HWP 不可用，会在 `X86PlatformShim → xcpm_hwp_enable` 触发 **type 13 general protection panic**。
 > 把这一项设为 Enabled 后即通过。**遇到 `X86PlatformShim` / `xcpm_hwp_enable` 相关 panic，第一件事查这里。**
+> （本机另用 `CPUFriendDataProvider` 注入**不带 `hwp` 变量**的频率表，绕开 HWP —— 见 §六。）
 
 > **原装 Intel Wi-Fi 6 AX201 已弃用**（Intel 网卡做不了 AirDrop / 接力 / 通用剪贴板 / Apple Watch 解锁 —— 缺 AWDL）。
 > 相关的 `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` 三个 kext 已从本 EFI 中**移除**（不再需要）。
+
+> ⚠️ **`AppleIGC.kext` 是刻意禁用的**：内核按**驱动挂载先后**分配 `en0` / `en1`。
+> 保留有线驱动会让 I225-V 抢到 `en0`，而 AirDrop / 接力要求 **`en0` 是无线**。
+> 本机做法 = `AppleIGC.kext` 设 `Enabled = false` + 删掉 `NetworkInterfaces.plist` 后重启 ⇒ 无线拿到 `en0`。
+> **代价：有线网卡不可用**；`Generic → ROM` 也应改成**无线的 MAC**（本机已是）。
 
 ---
 
@@ -207,7 +213,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `Kernel → Block` | `com.apple.iokit.IOSkywalkFamily`，Strategy `Exclude` | 让 OCLP 的 IOSkywalkFamily 生效（见 §九） |
 | `Kernel → Add` | **`CPUFriend.kext` 必须排在 `Lilu.kext` 之后**，随后是 `CPUFriendDataProvider.kext` | CPUFriend 依赖 Lilu 完成 patch |
 | `ACPI → Delete` | `SSDT` / `OemTableId = xh_adls3`（`All=false`） | 移除 BIOS 原始 `xh_adls3`，改加载修正版（见 §七） |
-| `NVRAM → Add → 4D1FDA02-…-B30102` | `revpatch=sbvmm,cpuname`、`revcpu=1`、`revcpuname=<CPU 名称>` | 修 `MacPro7,1` 下显示成 `8-Core Intel Xeon W` 的问题（见下） |
+| `NVRAM → Add → 4D1FDA02-…-B30102` | `revpatch=sbvmm,cpuname`、`revcpu=1`、`revcpuname=<CPU 名称>` | 让「关于本机」显示自定义 CPU 名称（本机 = `8-Core Intel Core i7-12700K`，见下） |
 | `Misc → Security → SecureBootModel` | `Disabled` | Apple Secure Boot 会拒绝非 Apple 签名的 kext |
 | `Misc → Security → ExposeSensitiveData` | `7` | 让 1401 Mac app 能确认 OpenCore 是从哪个分区启动的（7 而非 15，刻意不含 OEM 信息） |
 
@@ -217,7 +223,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 >   想恢复：按自己的 PCI 路径加回 `AAPL,slot-name`；**不要动 Wi-Fi 的 `IOName`**（会失配驱动）。
 > - `PlatformInfo → Memory` 整段删除、`CustomMemory = false` —— 原本注入 12 槽内存视图（含内存条序列号 / 型号）。
 
-> **CPU 名称显示（`MacPro7,1` 下默认会显示成 `8-Core Intel Xeon W`）**：用 `RestrictEvents` 修 ——
+> **CPU 名称显示**：用 `RestrictEvents` 修 ——
 > boot-args 需含 **`revpatch=sbvmm,cpuname`**，并加 **`revcpu=1`**，名称放在 NVRAM
 > `4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:revcpuname`。
 > **★ 坑：同名的 NVRAM 变量优先级低于 boot-args**，只写 NVRAM 会被 boot-args 的 `revpatch=sbvmm` 覆盖、等于没生效。
@@ -226,7 +232,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 ### 还必须满足
 
 - **BIOS**：Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**
-- **SMBIOS**：能跑 macOS 26 且用独显的机型（**已测试：`MacPro7,1`**；`iMacPro1,1` 是已验证过的可回退基线，不依赖 HWP）
+- **SMBIOS**：能跑 macOS 26 且用独显的机型（**本机 = `iMac20,1`**；`iMacPro1,1` / `MacPro7,1` 都是已验证过的可回退基线）
 - **删掉** `nv_disable=1`、WhateverGreen 的 NVIDIA patch、`agdpmod=pikera`
 - NVIDIA 卡**不需要**任何功能性 `DeviceProperties`（本仓库的 `DeviceProperties → Add` 已置空）
 
@@ -235,7 +241,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 ## 五、boot-args（本仓库当前值）
 
 ```
--v amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=sbvmm,cpuname keepsyms=1 debug=0x144 revcpu=1
+-v amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=cpuname keepsyms=1 debug=0x144 revcpu=1 brcmfx-country=#a
 ```
 
 | 参数 | 作用 |
@@ -247,7 +253,8 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `-wegnoigpu` | WhateverGreen：屏蔽无驱动的 Intel 核显 |
 | `nvrmsettle=1500` | 驱动 settle 时间；**必须保留** —— 去掉它、且 BAR1 未放置（ReBAR 关）时，驱动会盲睡 100 秒（≈2 分钟开机）。**注意：只关 ReBAR 但保留本参数，不会有这个延迟。**（见下方说明） |
 | `nvfbsample=1` | 诊断用：每 10 s 校验一次帧缓冲 |
-| `-no_compat_check` | 让 macOS 26 在 `MacPro7,1` 上跳过机型兼容性检查 |
+| `-no_compat_check` | 让 macOS 26 在**不在白名单的机型**上跳过兼容性检查（`iMac20,1` 不在 Tahoe 白名单，靠它启动） |
+| `brcmfx-country=#a` | `AirportBrcmFixup` 用的国家码覆盖（`#a` = 由 `BRCM` 固件自行决定）；配合 OCLP 的 Broadcom Wi-Fi |
 | `revpatch=sbvmm,cpuname` + `revcpu=1` | RestrictEvents：修 CPU 名称显示为 `8-Core Intel Core i7-12700K`（见 §四） |
 | `keepsyms=1 debug=0x144` | panic 时保留符号 + 打开调试输出（排障用） |
 | `-v` | 详细启动日志 |
@@ -295,13 +302,14 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | Kext | 版本 | 来源 |
 |---|---|---|
 | Lilu | 1.7.3 | acidanthera |
+| **CpuTopologyRebuild** | 2.0.2 | b00t0x（重建 Alder Lake P/E 核拓扑；本机 **E 核开启**） |
 | **CPUFriend** | **1.3.0** | acidanthera（**必须排在 Lilu 之后**） |
-| **CPUFriendDataProvider** | — | 数据 = **`iMacPro1,1` 的完整机型 plist**（见下） |
+| **CPUFriendDataProvider** | — | 数据 = **`iMacPro1,1` 的完整机型 plist（已删掉 `hwp` 变量）**（见下） |
 | VirtualSMC | 1.3.9 | acidanthera |
 | SMCProcessor | 1.3.9 | acidanthera |
 | SMCSuperIO | 1.3.9 | joedm |
 | WhateverGreen | 1.7.2 | acidanthera |
-| AppleIGC | 1.9d2 | sxx |
+| ~~AppleIGC~~ | 1.9d2 | sxx（**本机禁用**，见 §一） |
 | NVMeFix | 1.1.4 | acidanthera |
 | RestrictEvents | 1.1.7 | acidanthera |
 | USBToolBox | 1.2.0 | dhinakg |
@@ -313,11 +321,14 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | **IO80211FamilyLegacy** | 12.0 | **OCLP**（BCM43602 的基础驱动） |
 | **AirPortBrcmNIC-Tahoe** | OCLP 3.0.0-rc.3 | **OCLP**（`MinKernel = 25.0.0`，Darwin 25 / macOS 26 上的 `pci14e4,43ba` 驱动） |
 
-> **★ CPUFriend 是干什么的**：`MacPro7,1` 的机型数据里带 `hwp="on"`，会让 macOS 在 Alder Lake 上
-> 走 HWP 硬件调频，配合那张 Xeon W 频率表产生**低频振荡**（本机实测单线程只有 2.24–2.54 GHz，
-> 且八个核频率忽高忽低 → 直接表现就是「卡顿 / 掉帧」）。
-> 用 `CPUFriendDataProvider` 注入 **`iMacPro1,1` 的完整 plist（其中没有 `hwp` 变量，走传统 XCPM P-state）** 后，
+> **★ CPUFriend 是干什么的**：`MacPro7,1` / `iMac20,1` 这类机型 profile 的数据里带 `hwp="on"`，
+> 会让 macOS 在 Alder Lake 上走 **HWP 硬件调频**，配合一张不对口的频率表产生**低频振荡**
+> （本机实测单线程只有 2.24–2.54 GHz，八个核频率忽高忽低 → 表现就是「卡顿 / 掉帧」）。
+> 用 `CPUFriendDataProvider` 注入 **`iMacPro1,1` 的完整 plist（**已删掉 `hwp` 变量**，走传统 XCPM P-state）** 后，
 > 单线程回到 **~4.15 GHz**、八核稳定在 **~4.19 GHz（+85%）**，振荡消失。
+>
+> **★ 机型与 CPUFriend 数据是解耦的两件事**：机型决定「关于本机 / 内存图 / iServices 身份」，
+> CPUFriend 数据决定「频率行为」。本机刻意组合 = **`iMac20,1` 的外壳 + `iMacPro1,1` 的频率表**。
 > 回退 = 把这两条 `Kernel → Add` 条目设为 `Enabled=false`（或删掉两个 kext）。
 
 > **注意**：NullMoth 驱动的 4 个 kext（NVRM / NVAccel / NVRMFB / NVRMAGDC）**不在这里**，
@@ -329,7 +340,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 |---|---|---|
 | `IO80211FamilyLegacy.kext/Contents/PlugIns/AirPortBrcmNIC.kext` | `MinKernel 23.0.0` / `MaxKernel 24.99.99` | 同一条 BCM43602 驱动的 **Sequoia 版**。macOS 26 走单独的 `AirPortBrcmNIC-Tahoe.kext`（`MinKernel 25.0.0`）⇒ 这里保持禁用 |
 
-> `AppleALC` / `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` / `CpuTopologyRebuild` 已从本 EFI 中**完全移除**。
+> `AppleALC` / `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` 已从本 EFI 中**完全移除**。
 
 ## 七、Drivers / ACPI / Tools
 
@@ -420,7 +431,12 @@ build/accel_build.sh <src> <out>     # kexts
 | **USB3 拿不到** | 🟡 已接受 | 本机 USB3 无解（15 端口上限 + 端口图铁律）。现状用 T3 图：后置 6×USB-A + 2×Type-C **全部可用，但只有 USB2 速率** |
 | ~~蓝牙同步调用死锁~~ | ✅ **已解决** | 原 `IOBluetoothFamily` 被屏蔽但 `bluetoothd` 在跑 ⇒ 同步 XPC 永久等待，严重时连 USB 输入一起卡死。**换 BCM943602CDP 后根除** |
 | ~~mediaanalysisd 崩溃~~ | ✅ **已修** | 驱动 1.14.0 起不再出现 |
-| **显示器被识别成 30.5″ 电视** | 🔴 仍存在 | 1.15.0 更新日志宣称「Fix monitors shown as a 30-inch TV in About This Mac」，但**本机实测无效**（补丁确在二进制里、UUID 已核对，仍报 30.5959″）。根因方向已订正：`'dflg'` 是 **macOS 往下写给驱动**的，驱动从不产生电视位 ⇒ 判定在 framebuffer 之上（CoreDisplay/CoreGraphics），可疑触发点是 EDID 的 CEA-861 扩展块 |
+| ~~显示器被识别成 30.5″ 电视~~ | ✅ **已修**（本机自打补丁） | 1.15.0 自带的补丁**本机实测无效**（仍报 30.5959″）。**真因 = 驱动没填 `IODisplayModeInformation.imageWidth / imageHeight`** ⇒ 已用 **PR #199** 的改动修好并生效（现报 **21.4041″**）。⚠️ 该 PR **被上游关闭、未合并**（改动进了 v2.0.0），本机仍停在 `v1.15.0 + PR199` |
+
+> **HiDPI**：macOS / CoreGraphics **自带**能力，不需要额外补丁 —— 装上修好尺寸的驱动后，
+> 「系统设置 → 显示器」里即可选 HiDPI 模式。
+> ⚠️ **枚举判据有坑**：必须带 `kCGDisplayShowDuplicateLowResolutionModes` 才能看全；
+> **只有切过去之后，当前模式才报 `pw = 2 × w`**。
 
 - 显示器**建议使用 60 Hz**，但**不要**把这些现象归因于 50 Hz —— 它们是驱动侧（NVIDIA 显示 / 合成路径）的问题。
 - 上游问题跟踪：<https://github.com/nullmoth/nvidia-macos-driver/issues>
@@ -500,6 +516,7 @@ NVRM: NV_ERR_MEMORY_ERROR (0x00000072) … RmInitAdapter failed! (0x24:0x72:1281
 
 | 日期 | 变更 |
 |---|---|
+| 2026-10-16 | **SMBIOS 换 `iMac20,1`**（三码随之更换；`iMacPro1,1` / `MacPro7,1` 保留为已验证的回退基线）；**`CPUFriendDataProvider` 换回 `iMacPro1,1` 的频率表**（删 `hwp`）⇒ 刻意组合 = **iMac20,1 外壳 + iMacPro1,1 频率表**；**`CpuTopologyRebuild` 回归启用**；**`AppleIGC` 禁用**（让无线拿到 `en0`）；boot-args 增 `brcmfx-country=#a`；`Generic → ROM` = **无线 MAC**；显示器尺寸问题**已修**（PR #199） |
 | 2026-10-14 | **同步到当前 ESP + 发布前清理**：EFI 全量同步（ACPI 改名 `SSDT-PLUG-ADL` / `SSDT-RTC-AWAC` / `SSDT-XHADLS3` + `disabled/` 子目录；移除 `CpuTopologyRebuild`；`NullMothLogo.efi` 未启用）。**移除 `DeviceProperties → Add`（PCI 槽位名注入）与 `PlatformInfo → Memory`（内存条视图注入）**，`CustomMemory = false` —— 两者只影响「系统报告」外观且携带本机硬件信息 |
 | 2026-10-13 | **跟随作者**：`ResizeGpuBars` **`-1` → `13`**（8 GB，作者验证范围）；同时把 ESP 的 `Kernel/Block → IONDRVSupport` 从 `false` 补成 **`true`**（装 Tahoe 后漏做的回填）。ESP / 桌面部署母本 / 本仓库三方现已一致 |
 | 2026-10-13 | **EFI 同步**：`ResizeGpuBars` `13` → **`-1`**（16 GB）；`config.plist` 与当前 `~/Desktop/EFI/OC/config.plist` 部署母本逐项对齐（仅脱敏字段不同）；README 正文的驱动版本 / BAR1 数值订正 |

@@ -197,6 +197,24 @@
 				<key>Arch</key>
 				<string>x86_64</string>
 				<key>BundlePath</key>
+				<string>CpuTopologyRebuild.kext</string>
+				<key>Comment</key>
+				<string>CpuTopologyRebuild.kext 2.0.2; rebuild Alder Lake P/E topology (E-cores ON)</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/CpuTopologyRebuild</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string></string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
 				<string>CPUFriend.kext</string>
 				<key>Comment</key>
 				<string>CPUFriend 1.3.0 - inject custom CPU power management data</string>
@@ -309,7 +327,7 @@
 				<key>Comment</key>
 				<string>AppleIGC.kext 1.9d2</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/AppleIGC</string>
 				<key>MaxKernel</key>
@@ -684,7 +702,7 @@
 			<key>HibernateSkipsPicker</key>
 			<false/>
 			<key>HideAuxiliary</key>
-			<true/>
+			<false/>
 			<key>InstanceIdentifier</key>
 			<string></string>
 			<key>LauncherOption</key>
@@ -861,7 +879,7 @@
 				AAAAAAAAAAAAAAAAAAA=
 				</data>
 				<key>boot-args</key>
-				<string>-v amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=sbvmm,cpuname keepsyms=1 debug=0x144 revcpu=1</string>
+				<string>-v amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=cpuname keepsyms=1 debug=0x144 revcpu=1 brcmfx-country=#a</string>
 				<key>csr-active-config</key>
 				<data>
 				QwoAAA==
@@ -925,7 +943,7 @@
 			<key>SystemMemoryStatus</key>
 			<string>Auto</string>
 			<key>SystemProductName</key>
-			<string>MacPro7,1</string>
+			<string>iMac20,1</string>
 			<key>SystemSerialNumber</key>
 			<string>XXXXXXXXXXXX</string>
 			<key>SystemUUID</key>
