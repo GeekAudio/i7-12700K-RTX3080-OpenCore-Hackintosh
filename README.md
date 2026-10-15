@@ -301,33 +301,38 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 
 | Kext | 版本 | 来源 |
 |---|---|---|
-| Lilu | 1.7.2 | acidanthera |
+| Lilu | 1.7.3 | **Dortania build-repo**（`Lilu-0515f40`） |
 | **CpuTopologyRebuild** | 2.0.2 | b00t0x（重建 Alder Lake P/E 核拓扑；本机 **E 核开启**） |
 | **CPUFriend** | **1.3.0** | acidanthera（**必须排在 Lilu 之后**） |
 | **CPUFriendDataProvider** | — | 数据 = **`iMacPro1,1` 的完整机型 plist（已删掉 `hwp` 变量）**（见下） |
-| VirtualSMC | 1.3.8 | acidanthera |
-| SMCProcessor | 1.3.8 | acidanthera |
-| SMCSuperIO | 1.3.8 | joedm |
-| WhateverGreen | 1.7.1 | acidanthera |
+| VirtualSMC | 1.3.9 | **Dortania build-repo**（`VirtualSMC-b5c62c2`） |
+| SMCProcessor | 1.3.9 | **Dortania build-repo** |
+| SMCSuperIO | 1.3.9 | **Dortania build-repo** |
+| WhateverGreen | 1.7.2 | **Dortania build-repo**（`WhateverGreen-093e76f`） |
 | AppleIGC | 1.9d2 | sxx（**本机 `Enabled=false`**，见 §一） |
-| NVMeFix | 1.1.3 | acidanthera |
-| RestrictEvents | 1.1.6 | acidanthera |
+| NVMeFix | 1.1.4 | acidanthera |
+| RestrictEvents | 1.1.7 | **Dortania build-repo**（`RestrictEvents-9265e78`） |
 | USBToolBox | 1.2.0 | dhinakg |
 | XHCI-unsupported | 0.9.2 | RehabMan |
 | UTBMap | 1.1 | dhinakg |
 | AMFIPass | 1.4.1 | dhinakg |
-| BlueToolFixup | 2.7.2 | acidanthera（BrcmPatchRAM） |
+| BlueToolFixup | 2.7.3 | **Dortania build-repo**（`BrcmPatchRAM-6538902`） |
 | **IOSkywalkFamily** | 1.0 | **OCLP**（必须排在 IO80211FamilyLegacy 之前加载） |
 | **IO80211FamilyLegacy** | 12.0 | **OCLP**（BCM43602 的基础驱动） |
 | **AirPortBrcmNIC-Tahoe** | OCLP 3.0.0-rc.3 | **OCLP**（`MinKernel = 25.0.0`，Darwin 25 / macOS 26 上的 `pci14e4,43ba` 驱动） |
 
-> **★ 全部换成了官方 release**（2026-10-16 核查）：此前 EFI 里的
-> `Lilu` / `VirtualSMC` / `SMCProcessor` / `SMCSuperIO` / `WhateverGreen` / `RestrictEvents` / `NVMeFix` / `BlueToolFixup`
-> 是**第三方重新编译**的版本 —— 版本号比上游**高一个补丁号**（如 `1.7.3`），
-> 但**上游根本没有这些 tag**（逐个查过，全 404），且构建元数据是 **Xcode 14.2 / macOS 12.3（2022）**，
-> 与官方 release 的 Xcode 16.4+ / macOS 15.5 对不上；二进制与官方逐个哈希比对**全不相同**。
-> 已全部替换为官方 release（**RELEASE 构建，非 DEBUG** —— 体积与官方 DEBUG 差 1.8× 以上，可排除）。
-> 换完**版本号是「往下走」的**（`1.7.3` → `1.7.2`），但实际构建**更新**。
+> **★ 为什么版本号比官方 release 高一位（2026-10-16 查证）**：`Lilu 1.7.3` / `VirtualSMC 1.3.9` /
+> `WhateverGreen 1.7.2` / `RestrictEvents 1.1.7` / `BlueToolFixup 2.7.3` 这些**不是**上游的 release 版本
+> （上游 tag 里查不到），而是 **[Dortania `build-repo`](https://github.com/dortania/build-repo)** 按
+> **具体 commit** 构建的产物 —— 上游在最后一次 release 之后又有提交，Dortania 就把补丁号 +1。
+>
+> **这是厂商指定要用的版本**：NullMoth 的安装脚本 `app/Resources/nullmoth-setup.sh` 里 `kurl()`
+> 把 `Lilu.kext` 固定到 `dortania/build-repo/…/Lilu-0515f40/Lilu-1.7.3-RELEASE.zip`，
+> 并**逐个校验 SHA-256**（`261aebb9dc83adb6…`）；`RestrictEvents` 同理。注释原话：
+> *"Kexts the driver's OpenCore setup needs, pinned to the same files 1401 builds with."*
+>
+> ⇒ **不要把这些换成上游的 release** —— 那是**降级**（release 对应的是更早的 commit）。
+> 本仓库的这 8 个 kext 与 Dortania 的产物**逐字节相同**（已逐个 sha256 比对）。
 
 > **★ CPUFriend 是干什么的**：`MacPro7,1` / `iMac20,1` 这类机型 profile 的数据里带 `hwp="on"`，
 > 会让 macOS 在 Alder Lake 上走 **HWP 硬件调频**，配合一张不对口的频率表产生**低频振荡**
@@ -524,7 +529,7 @@ NVRM: NV_ERR_MEMORY_ERROR (0x00000072) … RmInitAdapter failed! (0x24:0x72:1281
 
 | 日期 | 变更 |
 |---|---|
-| 2026-10-16 | **kext 全部换成官方 release**：`Lilu 1.7.3→1.7.2`、`VirtualSMC/SMCProcessor/SMCSuperIO 1.3.9→1.3.8`、`WhateverGreen 1.7.2→1.7.1`、`RestrictEvents 1.1.7→1.1.6`、`NVMeFix 1.1.4→1.1.3`、`BlueToolFixup 2.7.3→2.7.2`。原版本号比上游高一个补丁号且**上游无此 tag**，构建工具链是 Xcode 14.2（2022）⇒ 系第三方重编译，已替换（详见 §六 说明） |
+| 2026-10-16 | **kext 溯源查清（订正）**：`Lilu 1.7.3` / `VirtualSMC 1.3.9` / `WhateverGreen 1.7.2` / `RestrictEvents 1.1.7` / `BlueToolFixup 2.7.3` 这些「比官方 release 高一位」的版本号，是 **[Dortania build-repo](https://github.com/dortania/build-repo) 按具体 commit 构建**的产物，且**被 NullMoth 安装器 `kurl()` 固定 + SHA-256 校验**。⚠️ **不要换成上游 release（那是降级）**。已逐个 sha256 与 Dortania 产物比对确认相同（详见 §六） |
 | 2026-10-16 | **驱动版本订正**：本机实际为 **2.0.x**（`/Library/NullMoth/driver-version` = `2.0.1`；驱动本体 = v2.0.0 = 最新），**不是** 1.15.0；**PR #199 已被上游收编进 v2.0.0** ⇒ 不再需要本地补丁。**`AppleIGC` 改为启用**（用户要求开启有线网；`en0` 已钉给 Wi-Fi，有线应得 `en1`） |
 | 2026-10-16 | **SMBIOS 换 `iMac20,1`**（三码随之更换；`iMacPro1,1` / `MacPro7,1` 保留为已验证的回退基线）；**`CPUFriendDataProvider` 换回 `iMacPro1,1` 的频率表**（删 `hwp`）⇒ 刻意组合 = **iMac20,1 外壳 + iMacPro1,1 频率表**；**`CpuTopologyRebuild` 回归启用**；**`AppleIGC` 禁用**（让无线拿到 `en0`）；boot-args 增 `brcmfx-country=#a`；`Generic → ROM` = **无线 MAC**；显示器尺寸问题**已修**（PR #199） |
 | 2026-10-14 | **同步到当前 ESP + 发布前清理**：EFI 全量同步（ACPI 改名 `SSDT-PLUG-ADL` / `SSDT-RTC-AWAC` / `SSDT-XHADLS3` + `disabled/` 子目录；移除 `CpuTopologyRebuild`；`NullMothLogo.efi` 未启用）。**移除 `DeviceProperties → Add`（PCI 槽位名注入）与 `PlatformInfo → Memory`（内存条视图注入）**，`CustomMemory = false` —— 两者只影响「系统报告」外观且携带本机硬件信息 |
