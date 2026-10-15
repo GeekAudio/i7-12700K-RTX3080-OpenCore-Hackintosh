@@ -1,7 +1,7 @@
 # ASUS TUF GAMING Z690-PLUS WIFI D4 + i7-12700K + RTX 3080 — OpenCore EFI
 
 一台 Alder Lake + NVIDIA RTX 3080 黑苹果的 OpenCore EFI 备份，SMBIOS 为 **iMac20,1**，系统 **macOS 26.7.1 (25G241 / Darwin 25.6.0)**。
-显卡由 **NullMoth NVIDIA 驱动 1.15.0** 驱动（Turing 及以后），核显无驱动、已屏蔽；无线改用 **Broadcom BCM943602CDP**。
+显卡由 **NullMoth NVIDIA 驱动 2.0.x** 驱动（Turing 及以后），核显无驱动、已屏蔽；无线改用 **Broadcom BCM943602CDP**。
 
 > ⚠️ **发布前已做两件事：脱敏 + 移除机器特有内容**
 >
@@ -42,12 +42,12 @@
 | CPU | Intel Core i7-12700K (Alder Lake, 8P+4E) | `SSDT-PLUG-ADL.aml`（12 代 XCPM 处理器表）；`ProcessorType=3841` |
 | 主板 | **ASUS TUF GAMING Z690-PLUS WIFI D4** | BIOS 中 **ReBAR 已开启**、Above 4G Decoding ON、CSM OFF、**Intel Speed Shift Technology = Enabled**（见下方 ⚠️） |
 | 内存 | 2 × 16 GB DDR4-3600 Kingston `KHX2666C16/16G`（插在 A2 / B2） | 走真实 SMBIOS，**不做内存注入**（本仓库已把 `PlatformInfo/Memory` 整段移除，见顶部 ⚠️） |
-| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 1.15.0**；BAR1 = 8 GB（`ResizeGpuBars = 13`）。⚠️ 本机那份另打了 **PR #199 的 HiDPI / 显示器尺寸改动 + 一个本地补丁**（本仓库不含，`NVMTLDriver` 插件 sha 与 stock 1.15.0 不同） |
+| 显卡 | NVIDIA GeForce RTX 3080 10 GB (`10de:2206`) | **NullMoth NVIDIA 驱动 2.0.x**；BAR1 = 8 GB（`ResizeGpuBars = 13`）。`/Library/NullMoth/driver-version` = `2.0.1`；官方 2.0.1 / 2.0.2 的 release notes 均写 **"No changes to the driver or the Mac app since 2.0.0"** ⇒ **驱动本体 = v2.0.0 = 最新**（2.0.1/2.0.2 只改 1401 for Windows） |
 | 核显 | Intel UHD 770 (`8086:4680`) | **无驱动，`-wegnoigpu` 屏蔽** |
 | 有线网卡 | Intel I225-V 2.5GbE | `AppleIGC.kext` —— **本机 `Enabled = false`**（刻意的：让无线抢到 `en0`，见 §九） |
 | 无线 / 蓝牙 | **Broadcom BCM943602CDP**（Wi-Fi `14e4:43ba` / 蓝牙 BCM20703，USB） | `IO80211FamilyLegacy` + **`AirPortBrcmNIC-Tahoe.kext`** + `BlueToolFixup`（**需 OCLP 根补丁**，见 §九） |
 | 存储 | NVMe | `NVMeFix.kext` |
-| 显示器 | Redmi 215 NF，1920×1080 @ 60 Hz | 建议 60 Hz；驱动侧已修「被识别成 30.5″ 电视」（PR #199） |
+| 显示器 | Redmi 215 NF，1920×1080 @ 60 Hz | 建议 60 Hz；驱动侧已修「被识别成 30.5″ 电视」（**PR #199 已被上游收编进 v2.0.0**） |
 | 系统 | **macOS 26.7.1 (25G241)** | OpenCore 1.0.8 RELEASE |
 
 > ⚠️ **BIOS 硬前提：`Intel(R) Speed Shift Technology` 必须是 `Enabled`（`Auto` 也可能等效关闭）。**
@@ -301,25 +301,33 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 
 | Kext | 版本 | 来源 |
 |---|---|---|
-| Lilu | 1.7.3 | acidanthera |
+| Lilu | 1.7.2 | acidanthera |
 | **CpuTopologyRebuild** | 2.0.2 | b00t0x（重建 Alder Lake P/E 核拓扑；本机 **E 核开启**） |
 | **CPUFriend** | **1.3.0** | acidanthera（**必须排在 Lilu 之后**） |
 | **CPUFriendDataProvider** | — | 数据 = **`iMacPro1,1` 的完整机型 plist（已删掉 `hwp` 变量）**（见下） |
-| VirtualSMC | 1.3.9 | acidanthera |
-| SMCProcessor | 1.3.9 | acidanthera |
-| SMCSuperIO | 1.3.9 | joedm |
-| WhateverGreen | 1.7.2 | acidanthera |
-| ~~AppleIGC~~ | 1.9d2 | sxx（**本机禁用**，见 §一） |
-| NVMeFix | 1.1.4 | acidanthera |
-| RestrictEvents | 1.1.7 | acidanthera |
+| VirtualSMC | 1.3.8 | acidanthera |
+| SMCProcessor | 1.3.8 | acidanthera |
+| SMCSuperIO | 1.3.8 | joedm |
+| WhateverGreen | 1.7.1 | acidanthera |
+| AppleIGC | 1.9d2 | sxx（**本机 `Enabled=false`**，见 §一） |
+| NVMeFix | 1.1.3 | acidanthera |
+| RestrictEvents | 1.1.6 | acidanthera |
 | USBToolBox | 1.2.0 | dhinakg |
 | XHCI-unsupported | 0.9.2 | RehabMan |
 | UTBMap | 1.1 | dhinakg |
 | AMFIPass | 1.4.1 | dhinakg |
-| BlueToolFixup | 2.7.3 | acidanthera |
+| BlueToolFixup | 2.7.2 | acidanthera（BrcmPatchRAM） |
 | **IOSkywalkFamily** | 1.0 | **OCLP**（必须排在 IO80211FamilyLegacy 之前加载） |
 | **IO80211FamilyLegacy** | 12.0 | **OCLP**（BCM43602 的基础驱动） |
 | **AirPortBrcmNIC-Tahoe** | OCLP 3.0.0-rc.3 | **OCLP**（`MinKernel = 25.0.0`，Darwin 25 / macOS 26 上的 `pci14e4,43ba` 驱动） |
+
+> **★ 全部换成了官方 release**（2026-10-16 核查）：此前 EFI 里的
+> `Lilu` / `VirtualSMC` / `SMCProcessor` / `SMCSuperIO` / `WhateverGreen` / `RestrictEvents` / `NVMeFix` / `BlueToolFixup`
+> 是**第三方重新编译**的版本 —— 版本号比上游**高一个补丁号**（如 `1.7.3`），
+> 但**上游根本没有这些 tag**（逐个查过，全 404），且构建元数据是 **Xcode 14.2 / macOS 12.3（2022）**，
+> 与官方 release 的 Xcode 16.4+ / macOS 15.5 对不上；二进制与官方逐个哈希比对**全不相同**。
+> 已全部替换为官方 release（**RELEASE 构建，非 DEBUG** —— 体积与官方 DEBUG 差 1.8× 以上，可排除）。
+> 换完**版本号是「往下走」的**（`1.7.3` → `1.7.2`），但实际构建**更新**。
 
 > **★ CPUFriend 是干什么的**：`MacPro7,1` / `iMac20,1` 这类机型 profile 的数据里带 `hwp="on"`，
 > 会让 macOS 在 Alder Lake 上走 **HWP 硬件调频**，配合一张不对口的频率表产生**低频振荡**
@@ -431,7 +439,7 @@ build/accel_build.sh <src> <out>     # kexts
 | **USB3 拿不到** | 🟡 已接受 | 本机 USB3 无解（15 端口上限 + 端口图铁律）。现状用 T3 图：后置 6×USB-A + 2×Type-C **全部可用，但只有 USB2 速率** |
 | ~~蓝牙同步调用死锁~~ | ✅ **已解决** | 原 `IOBluetoothFamily` 被屏蔽但 `bluetoothd` 在跑 ⇒ 同步 XPC 永久等待，严重时连 USB 输入一起卡死。**换 BCM943602CDP 后根除** |
 | ~~mediaanalysisd 崩溃~~ | ✅ **已修** | 驱动 1.14.0 起不再出现 |
-| ~~显示器被识别成 30.5″ 电视~~ | ✅ **已修**（本机自打补丁） | 1.15.0 自带的补丁**本机实测无效**（仍报 30.5959″）。**真因 = 驱动没填 `IODisplayModeInformation.imageWidth / imageHeight`** ⇒ 已用 **PR #199** 的改动修好并生效（现报 **21.4041″**）。⚠️ 该 PR **被上游关闭、未合并**（改动进了 v2.0.0），本机仍停在 `v1.15.0 + PR199` |
+| ~~显示器被识别成 30.5″ 电视~~ | ✅ **已修**（本机自打补丁） | 1.15.0 自带的补丁**本机实测无效**（仍报 30.5959″）。**真因 = 驱动没填 `IODisplayModeInformation.imageWidth / imageHeight`** ⇒ 已修好并生效（现报 **21.4041″**）。⚠️ **PR #199 已被上游收编进 v2.0.0**（changelog 署名），本机驱动已是 2.0.x ⇒ **不需要本地补丁** |
 
 > **HiDPI**：macOS / CoreGraphics **自带**能力，不需要额外补丁 —— 装上修好尺寸的驱动后，
 > 「系统设置 → 显示器」里即可选 HiDPI 模式。
@@ -516,6 +524,8 @@ NVRM: NV_ERR_MEMORY_ERROR (0x00000072) … RmInitAdapter failed! (0x24:0x72:1281
 
 | 日期 | 变更 |
 |---|---|
+| 2026-10-16 | **kext 全部换成官方 release**：`Lilu 1.7.3→1.7.2`、`VirtualSMC/SMCProcessor/SMCSuperIO 1.3.9→1.3.8`、`WhateverGreen 1.7.2→1.7.1`、`RestrictEvents 1.1.7→1.1.6`、`NVMeFix 1.1.4→1.1.3`、`BlueToolFixup 2.7.3→2.7.2`。原版本号比上游高一个补丁号且**上游无此 tag**，构建工具链是 Xcode 14.2（2022）⇒ 系第三方重编译，已替换（详见 §六 说明） |
+| 2026-10-16 | **驱动版本订正**：本机实际为 **2.0.x**（`/Library/NullMoth/driver-version` = `2.0.1`；驱动本体 = v2.0.0 = 最新），**不是** 1.15.0；**PR #199 已被上游收编进 v2.0.0** ⇒ 不再需要本地补丁。**`AppleIGC` 改为启用**（用户要求开启有线网；`en0` 已钉给 Wi-Fi，有线应得 `en1`） |
 | 2026-10-16 | **SMBIOS 换 `iMac20,1`**（三码随之更换；`iMacPro1,1` / `MacPro7,1` 保留为已验证的回退基线）；**`CPUFriendDataProvider` 换回 `iMacPro1,1` 的频率表**（删 `hwp`）⇒ 刻意组合 = **iMac20,1 外壳 + iMacPro1,1 频率表**；**`CpuTopologyRebuild` 回归启用**；**`AppleIGC` 禁用**（让无线拿到 `en0`）；boot-args 增 `brcmfx-country=#a`；`Generic → ROM` = **无线 MAC**；显示器尺寸问题**已修**（PR #199） |
 | 2026-10-14 | **同步到当前 ESP + 发布前清理**：EFI 全量同步（ACPI 改名 `SSDT-PLUG-ADL` / `SSDT-RTC-AWAC` / `SSDT-XHADLS3` + `disabled/` 子目录；移除 `CpuTopologyRebuild`；`NullMothLogo.efi` 未启用）。**移除 `DeviceProperties → Add`（PCI 槽位名注入）与 `PlatformInfo → Memory`（内存条视图注入）**，`CustomMemory = false` —— 两者只影响「系统报告」外观且携带本机硬件信息 |
 | 2026-10-13 | **跟随作者**：`ResizeGpuBars` **`-1` → `13`**（8 GB，作者验证范围）；同时把 ESP 的 `Kernel/Block → IONDRVSupport` 从 `false` 补成 **`true`**（装 Tahoe 后漏做的回填）。ESP / 桌面部署母本 / 本仓库三方现已一致 |
