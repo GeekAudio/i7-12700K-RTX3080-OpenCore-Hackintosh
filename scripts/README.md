@@ -51,6 +51,7 @@ bash check-rebar-state.sh
 | `watch-ghost.sh` | 重影**自动连拍**：每 N 秒抓一张，你只管复现，事后按时间点回看 | 否 | 同上 |
 | `cpu-freq-probe.sh` | 实测 CPU 真实核心频率（用 `mulsd` 4 周期依赖链 + 内联汇编，防止编译器折叠） | 否 | `clang`（Xcode 命令行工具） |
 | `add-nvrmsmallbar.sh` | 加 / 撤驱动 **1.15.0** 新增的 boot-arg **`-nvrmsmallbar`**（让 ReBAR 卡改走「小 BAR 卡」路径，相当于**软件关掉 ReBAR**） | 是（改 EFI，弹一次密码框） | 无 |
+| **`install-efi.sh`** | 把 Release 里的**装机 / 救援 EFI** 装到已挂载的 ESP（自动备份原 EFI 为 `EFI.bak-<时间戳>`） | 否（写 ESP 分区） | `curl`、`unzip` |
 
 ### 典型用法
 

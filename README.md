@@ -35,6 +35,54 @@
 
 ---
 
+## 📦 装机 EFI 与音频工具（[Releases](https://github.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/releases)）
+
+二进制产物走 Release，不放 git，仓库体积可控。
+
+| 资产 | 用途 |
+|---|---|
+| [`EFI-install-20261018.zip`](https://github.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/releases/tag/2026-10-18) | **装机 / 救援 EFI**（30 MB） |
+| [`AudioSwitch-1.0.zip`](https://github.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/releases/tag/2026-10-18) | **菜单栏音频切换 App**（成品，273 KB） |
+
+### 装机 EFI（`EFI-install`）
+
+从 U 盘启动、全新安装 macOS 或黑屏救援时用。与根目录 `EFI/` 的区别：
+
+| | `EFI/`（本仓库） | `EFI-install`（Release） |
+|---|---|---|
+| `ResizeAppleGpuBars` | `-1` | `0`（小 BAR） |
+| `ResizeGpuBars` | `13`（8 GB） | `-1` |
+| 安装器不装 NVIDIA 驱动 | ❌ 黑屏 | ✅ 能亮 |
+| AppleALC / `layout-id` | ✅ 板载音频齐全 | ❌ 装机阶段不需要 |
+| SMBIOS | 占位符 | 原机原值 |
+
+**一键装到 U 盘**：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/main/scripts/install-efi.sh | bash
+```
+
+脚本会：下载 Release 里的 `EFI-install-*.zip` → 定位已挂载的 ESP → 把原有 EFI 备份成
+`EFI.bak-<时间戳>` → 写入。需要自己挂载好 ESP 再跑。
+
+> ⚠️ **装机 EFI 按原样发布，内含原机的三码 / ROM / 蓝牙地址。** 装机前请先用
+> [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) 生成属于自己的 `MacPro7,1` 三码，
+> 改 `EFI/OC/config.plist` → `PlatformInfo` → `Generic` 里的
+> `SystemSerialNumber` / `MLB` / `SystemUUID` / `ROM`，否则可能与原机冲突。
+
+### AudioSwitch（菜单栏音频切换）
+
+板载 ALC897 的 6 个插孔都能用之后，日常切设备用的菜单栏工具：
+
+- 点图标即切默认输出 / 输入，不用进系统设置
+- 名称按背板丝印三栏对齐显示：`后置线路输出 · LINE OUT · 绿` / `前置话筒 · MIC IN · 粉`
+- 每 120 秒自动补前置麦克风的 VREF 80% 偏置（AppleHDA 只给第一个麦克风引脚加偏置）
+- 切换输入设备后立刻补一次
+
+用法：解压 → 拖进「应用程序」→ 点菜单栏喇叭图标。源码见 [`AudioSwitch/`](AudioSwitch/)。
+
+---
+
 ## 一、硬件配置
 
 | 部件 | 型号 | 驱动 / 说明 |
