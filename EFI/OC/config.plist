@@ -168,12 +168,47 @@
 	<dict>
 		<key>Add</key>
 		<dict>
+			<key>PciRoot(0x0)/Pci(0x1,0x0)/Pci(0x0,0x0)</key>
+			<dict>
+				<key>AAPL,slot-name</key>
+				<string>Slot-1</string>
+			</dict>
+			<key>PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)</key>
+			<dict>
+				<key>AAPL,slot-name</key>
+				<string>Slot-3</string>
+				<key>built-in</key>
+				<data>
+				AQ==
+				</data>
+				<key>device_type</key>
+				<string>AirPort</string>
+				<key>model</key>
+				<string>Broadcom BCM43602 802.11ac Wireless Network Adapter</string>
+			</dict>
+			<key>PciRoot(0x0)/Pci(0x1C,0x4)/Pci(0x0,0x0)</key>
+			<dict>
+				<key>AAPL,slot-name</key>
+				<string>Slot-4</string>
+				<key>built-in</key>
+				<data>
+				AQ==
+				</data>
+				<key>device_type</key>
+				<string>DSP Accelerator</string>
+				<key>model</key>
+				<string>Universal Audio UAD-2 DUO</string>
+			</dict>
 			<key>PciRoot(0x0)/Pci(0x1F,0x3)</key>
 			<dict>
 				<key>alc-verbs</key>
-				<data>AQAAAA==</data>
+				<data>
+				AQAAAA==
+				</data>
 				<key>layout-id</key>
-				<data>DgAAAA==</data>
+				<data>
+				DgAAAA==
+				</data>
 			</dict>
 			<key>PciRoot(0x0)/Pci(0x2,0x0)</key>
 			<dict>
@@ -358,7 +393,7 @@
 				<key>Comment</key>
 				<string>AppleIGC.kext 1.9d2</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/AppleIGC</string>
 				<key>MaxKernel</key>
@@ -619,6 +654,22 @@
 				<key>Strategy</key>
 				<string>Exclude</string>
 			</dict>
+			<dict>
+				<key>Arch</key>
+				<string>Any</string>
+				<key>Comment</key>
+				<string>Block NTFS filesystem so no NTFS volume auto-mounts in macOS</string>
+				<key>Enabled</key>
+				<true/>
+				<key>Identifier</key>
+				<string>com.apple.filesystems.ntfs</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string></string>
+				<key>Strategy</key>
+				<string>Exclude</string>
+			</dict>
 		</array>
 		<key>Emulate</key>
 		<dict>
@@ -778,21 +829,21 @@
 		<key>Debug</key>
 		<dict>
 			<key>AppleDebug</key>
-			<true/>
+			<false/>
 			<key>ApplePanic</key>
-			<true/>
+			<false/>
 			<key>DisableWatchDog</key>
 			<true/>
 			<key>DisplayDelay</key>
 			<integer>0</integer>
 			<key>DisplayLevel</key>
-			<integer>2147483714</integer>
+			<integer>0</integer>
 			<key>LogModules</key>
 			<string>*</string>
 			<key>SysReport</key>
 			<false/>
 			<key>Target</key>
-			<integer>69</integer>
+			<integer>0</integer>
 		</dict>
 		<key>Entries</key>
 		<array/>
@@ -925,10 +976,10 @@
 				</data>
 				<key>bluetoothInternalControllerInfo</key>
 				<data>
-				AAAAAAAAAAAAAAAAAAA=
+				AAAAAAAAAADsLOJ9hSE=
 				</data>
 				<key>boot-args</key>
-				<string>-v amfi_get_out_of_my_way=0x1 amfi=0x80 nvrmsettle=500 nvfbsample=1 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=cpuname keepsyms=1 debug=0x144 revcpu=1 -wegnoigpu</string>
+				<string>amfi_get_out_of_my_way=0x1 amfi=0x80 nvrmsettle=500 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=cpuname keepsyms=1 revcpu=1 -wegnoigpu gfxrst=4</string>
 				<key>csr-active-config</key>
 				<data>
 				QwoAAA==
@@ -972,7 +1023,7 @@
 		<key>Automatic</key>
 		<true/>
 		<key>CustomMemory</key>
-		<false/>
+		<true/>
 		<key>Generic</key>
 		<dict>
 			<key>AdviseFeatures</key>
@@ -997,6 +1048,98 @@
 			<string>XXXXXXXXXXXX</string>
 			<key>SystemUUID</key>
 			<string>00000000-0000-0000-0000-000000000000</string>
+		</dict>
+		<key>Memory</key>
+		<dict>
+			<key>DataWidth</key>
+			<integer>64</integer>
+			<key>Devices</key>
+			<array>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string>Channel A / DIMM 1</string>
+					<key>DeviceLocator</key>
+					<string>Slot 1</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string>Channel A / DIMM 2</string>
+					<key>DeviceLocator</key>
+					<string>Slot 2</string>
+					<key>Manufacturer</key>
+					<string>Kingston</string>
+					<key>PartNumber</key>
+					<string>KHX2666C16/16G</string>
+					<key>SerialNumber</key>
+					<string>3634532B</string>
+					<key>Size</key>
+					<integer>16384</integer>
+					<key>Speed</key>
+					<integer>3600</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string>Channel B / DIMM 1</string>
+					<key>DeviceLocator</key>
+					<string>Slot 3</string>
+					<key>Manufacturer</key>
+					<string>NO DIMM</string>
+					<key>PartNumber</key>
+					<string></string>
+					<key>SerialNumber</key>
+					<string></string>
+					<key>Size</key>
+					<integer>0</integer>
+					<key>Speed</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>AssetTag</key>
+					<string></string>
+					<key>BankLocator</key>
+					<string>Channel B / DIMM 2</string>
+					<key>DeviceLocator</key>
+					<string>Slot 4</string>
+					<key>Manufacturer</key>
+					<string>Kingston</string>
+					<key>PartNumber</key>
+					<string>KHX2666C16/16G</string>
+					<key>SerialNumber</key>
+					<string>09A50600</string>
+					<key>Size</key>
+					<integer>16384</integer>
+					<key>Speed</key>
+					<integer>3600</integer>
+				</dict>
+			</array>
+			<key>ErrorCorrection</key>
+			<integer>3</integer>
+			<key>FormFactor</key>
+			<integer>9</integer>
+			<key>MaxCapacity</key>
+			<integer>137438953472</integer>
+			<key>TotalWidth</key>
+			<integer>64</integer>
+			<key>Type</key>
+			<integer>26</integer>
+			<key>TypeDetail</key>
+			<integer>128</integer>
 		</dict>
 		<key>UpdateDataHub</key>
 		<true/>

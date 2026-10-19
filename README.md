@@ -42,7 +42,7 @@
 | 资产 | 用途 |
 |---|---|
 | [`EFI-install-20261018.zip`](https://github.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/releases/tag/2026-10-18) | **装机 / 救援 EFI**（30 MB） |
-| [`AudioSwitch-1.0.zip`](https://github.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/releases/tag/2026-10-18) | **菜单栏音频切换 App**（成品，273 KB） |
+| [`AudioSwitch-1.1.zip`](https://github.com/GeekAudio/i7-12700K-RTX3080-OpenCore-Hackintosh/releases/tag/2026-10-20) | **菜单栏音频切换 App**（成品，含 alc-verb，273 KB） |
 
 ### 装机 EFI（`EFI-install`）
 
@@ -72,12 +72,15 @@ curl -fsSL https://raw.githubusercontent.com/GeekAudio/i7-12700K-RTX3080-OpenCor
 
 ### AudioSwitch（菜单栏音频切换）
 
-板载 ALC897 的 6 个插孔都能用之后，日常切设备用的菜单栏工具：
+板载 ALC897 的 6 个插孔都能用之后，日常切设备用的菜单栏工具（**需要 macOS 13+**）：
 
 - 点图标即切默认输出 / 输入，不用进系统设置
-- 名称按背板丝印三栏对齐显示：`后置线路输出 · LINE OUT · 绿` / `前置话筒 · MIC IN · 粉`
+- 四栏对齐显示：`后置线路输出 · → · LINE · 绿` / `前置话筒 · ← · MIC · 粉`，颜色字用插孔真实颜色
+  - 方向用 `←` / `→` 而不是 `IN` / `OUT`：两者在系统字体里 advance 完全相同（10.45pt），
+    比例字体下符号列与接口名才能同时对齐（`LINE OUT` 与 `MIC IN` 宽度差 24pt，怎么调 tab 都歪）
 - 每 120 秒自动补前置麦克风的 VREF 80% 偏置（AppleHDA 只给第一个麦克风引脚加偏置）
-- 切换输入设备后立刻补一次
+- 菜单里可勾选**「登录时启动」**（`SMAppService`，macOS 13+ 官方 API）
+- 命令行：`--dump` / `--autostart-status` / `--enable-autostart` / `--disable-autostart`
 
 用法：解压 → 拖进「应用程序」→ 点菜单栏喇叭图标。源码见 [`AudioSwitch/`](AudioSwitch/)。
 
@@ -255,13 +258,14 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 
 | 位置 | 值 | 原因 |
 |---|---|---|
-| `UEFI → Quirks → ResizeGpuBars` | `13` | 8 GB BAR1，**作者验证过的值**（作者把驱动上限压死在 8 GB，理由是「16 GB 会在 bring-up 停住」）。⚠️ 代价：开机 ~21 s 死画面（停在 ACPI 页）。回退条件：开机卡 >2 分钟 ⇒ 改 `12`（4 GB）或关 ReBAR |
-| `Booter → Quirks → ResizeAppleGpuBars` | `-1` | 让 macOS 看到完整 BAR |
+| `UEFI → Quirks → ResizeGpuBars` | `-1` | 不做 resize，沿用固件已放置的 BAR1（BIOS 里 ReBAR 已开）。历史上用过 `13`（8 GB，作者验证值），代价是开机 ~21 s 死画面；当前 `-1` 配合 `nvrmsettle=500` |
+| `Booter → Quirks → ResizeAppleGpuBars` | `0` | macOS 侧按固件实际 BAR 走，不做二次 resize |
 | `Kernel → Block` | `com.apple.iokit.IONDRVSupport`，Strategy `Exclude` | 否则固件帧缓冲会抢走 NVRMFB 的显示 index 0 |
 | `Kernel → Block` | `com.apple.iokit.IOSkywalkFamily`，Strategy `Exclude` | 让 OCLP 的 IOSkywalkFamily 生效（见 §九） |
+| `Kernel → Block` | `com.apple.filesystems.ntfs`，Strategy `Exclude` | **全局屏蔽 NTFS**，让 Windows 盘不在 macOS 里自动挂载（见 §八） |
 | `Kernel → Add` | **`CPUFriend.kext` 必须排在 `Lilu.kext` 之后**，随后是 `CPUFriendDataProvider.kext` | CPUFriend 依赖 Lilu 完成 patch |
 | `ACPI → Delete` | `SSDT` / `OemTableId = xh_adls3`（`All=false`） | 移除 BIOS 原始 `xh_adls3`，改加载修正版（见 §七） |
-| `NVRAM → Add → 4D1FDA02-…-B30102` | `revpatch=sbvmm,cpuname`、`revcpu=1`、`revcpuname=<CPU 名称>` | 让「关于本机」显示自定义 CPU 名称（本机 = `8-Core Intel Core i7-12700K`，见下） |
+| `NVRAM → Add → 4D1FDA02-…-B30102` | `revpatch=sbvmm,cpuname`、`revcpu=1`、`revcpuname=<CPU 名称>` | 让「关于本机」显示自定义 CPU 名称（本机 = `12-Core Intel Core i7-12700K`，见下） |
 | `Misc → Security → SecureBootModel` | `Disabled` | Apple Secure Boot 会拒绝非 Apple 签名的 kext |
 | `Misc → Security → ExposeSensitiveData` | `7` | 让 1401 Mac app 能确认 OpenCore 是从哪个分区启动的（7 而非 15，刻意不含 OEM 信息） |
 
@@ -289,8 +293,12 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 ## 五、boot-args（本仓库当前值）
 
 ```
--v amfi_get_out_of_my_way=0x1 amfi=0x80 -wegnoigpu nvrmsettle=1500 nvfbsample=1 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=cpuname keepsyms=1 debug=0x144 revcpu=1 brcmfx-country=#a
+amfi_get_out_of_my_way=0x1 amfi=0x80 nvrmsettle=500 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=cpuname keepsyms=1 revcpu=1 -wegnoigpu gfxrst=4
 ```
+
+> 2026-10-20 起**调试类参数全部撤掉**（`-v` / `debug=0x144` / `nvfbsample=1`），
+> 同时把 OpenCore 换成 Release 版、`Misc → Debug` 全部归零。`keepsyms=1` 保留（panic 符号，
+> 本身不产生日志），`gfxrst=4` 保留（控制 WhateverGreen 的接管行为，不是日志项）。
 
 | 参数 | 作用 |
 |---|---|
@@ -299,16 +307,14 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | `amfi_get_out_of_my_way=0x1 amfi=0x80` | 让 WindowServer 能加载驱动 bundle（配合 AMFIPass） |
 | `ipc_control_port_options=0` | 配合上面的 AMFI 参数；**缺了它**，加固过的应用（Firefox / Chromium 系）会在启动时因任务控制端口被杀 |
 | `-wegnoigpu` | WhateverGreen：屏蔽无驱动的 Intel 核显 |
-| `nvrmsettle=1500` | 驱动 settle 时间；**必须保留** —— 去掉它、且 BAR1 未放置（ReBAR 关）时，驱动会盲睡 100 秒（≈2 分钟开机）。**注意：只关 ReBAR 但保留本参数，不会有这个延迟。**（见下方说明） |
-| `nvfbsample=1` | 诊断用：每 10 s 校验一次帧缓冲 |
+| `nvrmsettle=500` | 驱动 settle 时间；**必须保留** —— 去掉它、且 BAR1 未放置（ReBAR 关）时，驱动会盲睡 100 秒（≈2 分钟开机）。**注意：只关 ReBAR 但保留本参数，不会有这个延迟。**（见下方说明） |
 | `-no_compat_check` | 让 macOS 26 在**不在白名单的机型**上跳过兼容性检查（`iMac20,1` 不在 Tahoe 白名单，靠它启动） |
-| `brcmfx-country=#a` | `AirportBrcmFixup` 用的国家码覆盖（`#a` = 由 `BRCM` 固件自行决定）；配合 OCLP 的 Broadcom Wi-Fi |
-| `revpatch=sbvmm,cpuname` + `revcpu=1` | RestrictEvents：修 CPU 名称显示为 `8-Core Intel Core i7-12700K`（见 §四） |
-| `keepsyms=1 debug=0x144` | panic 时保留符号 + 打开调试输出（排障用） |
-| `-v` | 详细启动日志 |
+| `gfxrst=4` | WhateverGreen 的 GPU reset 行为控制；**不是日志参数**，别跟着调试项一起删 |
+| `revpatch=cpuname` + `revcpu=1` | RestrictEvents：修 CPU 名称显示为 `12-Core Intel Core i7-12700K`（见 §四） |
+| `keepsyms=1` | panic 时保留符号（本身不产生日志，调试项全关后仍保留） |
 
 > 上游驱动文档的推荐串为：`nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0`
-> —— 本机串与之等价（多了 `-v` / `-wegnoigpu` / `nvrmsettle=1500` / `nvfbsample=1` 等本机必需的项）。
+> —— 本机串与之等价（多了 `-wegnoigpu` / `nvrmsettle=500` / `-no_compat_check` / `revpatch` / `gfxrst=4` 等本机必需的项）。
 > **注意**：本机 boot-args 中**没有** `-nvrmnoflip` —— 大 BAR1 体制下用默认的零拷贝路径。
 
 #### 关于 `nvrmsettle`：那 100 秒盲睡的解法（上游 issue [#23](https://github.com/nullmoth/nvidia-macos-driver/issues/23)，已 closed / DONE）
@@ -350,6 +356,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | Kext | 版本 | 来源 |
 |---|---|---|
 | Lilu | 1.7.3 | **Dortania build-repo**（`Lilu-0515f40`） |
+| **AppleALC** | **1.9.9（本机自编译）** | 加 **本机自建 `layout 14`**（ALC897 / ASUS TUF Z690-PLUS，6 个插孔全可用）。必须排在 `Lilu` 之后，见 §六末「板载音频」 |
 | **CpuTopologyRebuild** | 2.0.2 | b00t0x（重建 Alder Lake P/E 核拓扑；本机 **E 核开启**） |
 | **CPUFriend** | **1.3.0** | acidanthera（**必须排在 Lilu 之后**） |
 | **CPUFriendDataProvider** | — | 数据 = **`iMacPro1,1` 的完整机型 plist（已删掉 `hwp` 变量）**（见下） |
@@ -368,6 +375,7 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 | **IOSkywalkFamily** | 1.0 | **OCLP**（必须排在 IO80211FamilyLegacy 之前加载） |
 | **IO80211FamilyLegacy** | 12.0 | **OCLP**（BCM43602 的基础驱动） |
 | **AirPortBrcmNIC-Tahoe** | OCLP 3.0.0-rc.3 | **OCLP**（`MinKernel = 25.0.0`，Darwin 25 / macOS 26 上的 `pci14e4,43ba` 驱动） |
+| **NvidiaSensor** | — | NullMoth 配套：把 GPU 温度送 SMC（`TG0D` / `TG0P`），无代码 kext |
 
 > **★ 为什么版本号比官方 release 高一位（2026-10-16 查证）**：`Lilu 1.7.3` / `VirtualSMC 1.3.9` /
 > `WhateverGreen 1.7.2` / `RestrictEvents 1.1.7` / `BlueToolFixup 2.7.3` 这些**不是**上游的 release 版本
@@ -401,19 +409,47 @@ U 盘上有 OpenCore 和 macOS 的启动日志，1401 会把它们发出去（**
 |---|---|---|
 | `IO80211FamilyLegacy.kext/Contents/PlugIns/AirPortBrcmNIC.kext` | `MinKernel 23.0.0` / `MaxKernel 24.99.99` | 同一条 BCM43602 驱动的 **Sequoia 版**。macOS 26 走单独的 `AirPortBrcmNIC-Tahoe.kext`（`MinKernel 25.0.0`）⇒ 这里保持禁用 |
 
-> `AppleALC` / `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` 已从本 EFI 中**完全移除**。
+> `itlwm` / `IntelBluetoothFirmware` / `IntelBTPatcher` 已从本 EFI 中**完全移除**（换 BCM43602 后不需要）。
+> `AppleALC` 曾一度移除，2026-10-18 以**自编译 1.9.9 + 自建 layout 14** 回归（见下）。
+
+### 板载音频（ALC897 · 自建 layout 14）
+
+目标：**6 个插孔全部可用**（3 输出 + 3 输入），验证不靠耳朵，全走 `alc-verb` / CoreAudio。
+
+EFI 侧 + 系统侧，缺一不可：
+
+| 位置 | 组件 | 说明 |
+|---|---|---|
+| `OC/Kexts/AppleALC.kext` | **1.9.9，本机自编译** | 内含 **`layout 14`**（ASUS TUF Z690-PLUS 的 ALC897 专用） |
+| `/System/Library/Extensions/AppleHDA.kext` | **600.2**（KDK 15.8.1 / `24H32`） | macOS 26 自带的 KDK **没有**这个 kext，必须从 KDK 15.8.1 提取装回 |
+| AudioSwitch 内置 `alc-verb` | — | 运行时发 HDA verb，补前置麦克风 VREF 80% |
+
+- **layout 14 的数据来源**：Windows 下用 HDAU 取**全量编解码器拓扑**（节点树 / Pin Config Default / EAPD / 插孔语义），
+  不是抄现成 layout。取数方法见 `参考资料/Win-HDA-codec拓扑提取方法.html`。
+- ⚠️ **AppleHDA 装进 `/Library/Extensions` 时**：AuxKC 会包含它 ⇒ 依赖 `IONDRVSupport` 必被拉进 AuxKC，
+  与 `Kernel → Block` 里的 `IONDRVSupport` 相互作用。本机当前 AppleHDA 在系统盘（`600.2` 已加载，AuxKC 里没有它）。
+- 验证：
+
+  ```bash
+  AudioSwitch --dump        # 6 个插孔的映射与默认设备
+  ```
+
+- 完整工具链（部署 / 布局 / 脚本 / 指南）见工作区 `ALC897-工具包/`。
 
 ## 七、Drivers / ACPI / Tools
 
 - **Drivers**：`OpenRuntime.efi`、`OpenHfsPlus.efi`、`ResetNvramEntry.efi`、`OpenCanopy.efi`
-  - 目录里另有 `NullMothLogo.efi`（NullMoth 开机 logo，**当前未启用**；不想要可在 `UEFI → Drivers` 里关掉）
+  - 四个都是 **Release 版**（2026-10-20 整体替换；Debug 版会在 ESP 上写 `opencore-*.txt` 日志，Release 不写）
+  - 目录里**没有** `NullMothLogo.efi`（早期版本有过，已删）
 - **ACPI**（启用 6 个）：`SSDT-EC.aml`、`SSDT-RTC-AWAC.aml`、`SSDT-USBX.aml`、`SSDT-SBUS-MCHC.aml`、**`SSDT-PLUG-ADL.aml`**（12 代 XCPM 处理器表）、**`SSDT-XHADLS3.aml`**
   - 目录里另有 `disabled/` 子目录：`SSDT-PLUG-MADT.aml`、`SSDT-PLUG-DRTNIA.aml`，**均禁用**（CPU 命名空间不对 / 12 代对比用的 Dortania 版）。
   - **`ACPI → Delete`**：`TableSignature = SSDT`、`OemTableId = xh_adls3`、`All = false` ——
     先移除 ASUS Z690 BIOS 自带的 `xh_adls3`，再加载修正版 `SSDT-XHADLS3.aml`，
     否则原表引用了不存在的 `\_SB.PC00.XHCI.RHUB.HS06`，启动时刷 `AE_NOT_FOUND`。
-- **Tools**：`OpenShell.efi`、`NullMothSafe.efi` ×2 条 —— 分别对应启动菜单里的
-  **「NullMoth: remove the NVIDIA driver at the next start」** 与 **「NullMoth: start macOS once without the NVIDIA driver」**（救援入口）
+- **Tools**：`OpenShell.efi` + `NullMothSafe.efi`（同一条目用了两次）—— 启动菜单里显示为
+  **「1401: Remove NVIDIA driver」**（写 NVRAM，**永久**）与 **「1401: Start once without NVIDIA driver」**
+  （`Arguments = once`，只跳过下一次），救援入口
+  - 三条 `Misc → Tools` 全部 `Auxiliary = true` ⇒ 启动菜单里**按空格**进 Extended Mode 才看得到
 
 ## 自检 / 取证脚本（[`scripts/`](scripts/)）
 
@@ -442,9 +478,22 @@ curl -fsSL https://raw.githubusercontent.com/GeekAudio/i7-12700K-RTX3080-OpenCor
 ```
 com.apple.iokit.IONDRVSupport      ← 驱动要求 Exclude：否则固件帧缓冲抢走显示 index 0
 com.apple.iokit.IOSkywalkFamily    ← OCLP Modern Wireless：允许降级到 OCLP 的 IOSkywalkFamily
+com.apple.filesystems.ntfs         ← 全局屏蔽 NTFS，Windows 盘不在 macOS 里挂载
 ```
 
 > 早期版本还屏蔽过 `IOBluetoothFamily` / `IO80211Family` 一族；换成 **BCM943602CDP** 之后已全部解除（见 §九）。
+
+### 屏蔽其他磁盘（NTFS）为什么用 `Kernel → Block`
+
+OC **没有** Clover 那种按卷隐藏（`HideVolume`），所以屏蔽 Windows 盘只有两条路：
+
+| 做法 | 优点 | 缺点 |
+|---|---|---|
+| `Kernel → Block` 加 `com.apple.filesystems.ntfs`（**本仓库采用**） | **全局**生效；不怕系统更新 / root patch；不依赖 fstab | **完全无法读 NTFS**（连 `diskutil mount` 都不行） |
+| `/etc/fstab` 写 `UUID=<卷UUID> none ntfs noauto 0 0` | 可以按卷挑 | fstab **会被 root patch / 系统更新清掉**（本机已两次踩到），盘号会变（**Volume UUID 不变**） |
+
+> 因此本机已清掉 `/etc/fstab`，只用 Block。要恢复 fstab 方式：`工具/屏蔽其他磁盘.command`。
+> 回退 Block：把该条 `Enabled` 设为 `false`。
 
 ## 九、无线与蓝牙（BCM943602CDP + OCLP）
 
@@ -577,6 +626,8 @@ NVRM: NV_ERR_MEMORY_ERROR (0x00000072) … RmInitAdapter failed! (0x24:0x72:1281
 
 | 日期 | 变更 |
 |---|---|
+| **2026-10-20** | **EFI 全量同步 + 调试项清零**：`OpenCore.efi` / `bootx64.efi` / 4 个 Drivers 全部换 **Release 版**（Release 不写 `opencore-*.txt`，`Misc → Debug → Target` 随之失效）；`Misc → Debug` 全部归零（`AppleDebug` / `ApplePanic` / `SysReport` = false，`DisplayLevel` / `DisplayDelay` / `Target` = 0；**`DisableWatchDog` 保留 `true`** 防固件看门狗在慢速引导时中止，它不是日志项）；boot-args 撤掉 `-v` / `debug=0x144` / `nvfbsample=1`；`Resources` 瘦身 **8.9 M → 2.4 M**（删 `Audio/` 与 `Label/`，`Image/` + `Font/` 保留）；**`Kernel → Block` 新增 `com.apple.filesystems.ntfs`**（全局屏蔽 Windows 盘，`/etc/fstab` 已清掉）；`ResizeGpuBars` `13` → **`-1`**、`ResizeAppleGpuBars` `-1` → **`0`**；`revcpuname` 订正为 **`12-Core`**（12700K 是 8P+4E） |
+| **2026-10-20** | **AudioSwitch 1.1**：三栏改**四栏**（中文 · `←`/`→` · 接口名 · 颜色，颜色字用插孔真实色渲染；`←`/`→` 在系统字体里 advance 相同 10.45pt，比例字体下才能对齐）；菜单栏图标改系统标准尺寸（14.5pt / semibold）；新增**「登录时启动」**（`SMAppService`）与 `--autostart-status` / `--enable-autostart` / `--disable-autostart`；`LSMinimumSystemVersion` 11.0 → **13.0** |
 | 2026-10-16 | **kext 溯源查清（订正）**：`Lilu 1.7.3` / `VirtualSMC 1.3.9` / `WhateverGreen 1.7.2` / `RestrictEvents 1.1.7` / `BlueToolFixup 2.7.3` 这些「比官方 release 高一位」的版本号，是 **[Dortania build-repo](https://github.com/dortania/build-repo) 按具体 commit 构建**的产物，且**被 NullMoth 安装器 `kurl()` 固定 + SHA-256 校验**。⚠️ **不要换成上游 release（那是降级）**。已逐个 sha256 与 Dortania 产物比对确认相同（详见 §六） |
 | 2026-10-16 | **驱动版本订正**：本机实际为 **2.0.x**（`/Library/NullMoth/driver-version` = `2.0.1`；驱动本体 = v2.0.0 = 最新），**不是** 1.15.0；**PR #199 已被上游收编进 v2.0.0** ⇒ 不再需要本地补丁。**`AppleIGC` 改为启用**（用户要求开启有线网；`en0` 已钉给 Wi-Fi，有线应得 `en1`） |
 | 2026-10-16 | **SMBIOS 换 `iMac20,1`**（三码随之更换；`iMacPro1,1` / `MacPro7,1` 保留为已验证的回退基线）；**`CPUFriendDataProvider` 换回 `iMacPro1,1` 的频率表**（删 `hwp`）⇒ 刻意组合 = **iMac20,1 外壳 + iMacPro1,1 频率表**；**`CpuTopologyRebuild` 回归启用**；**`AppleIGC` 禁用**（让无线拿到 `en0`）；boot-args 增 `brcmfx-country=#a`；`Generic → ROM` = **无线 MAC**；显示器尺寸问题**已修**（PR #199） |
