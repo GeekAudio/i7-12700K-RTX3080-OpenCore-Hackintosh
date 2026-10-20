@@ -215,6 +215,23 @@
 				<key>disable-gpu</key>
 				<true/>
 			</dict>
+			<key>PciRoot(0x0)/Pci(0x1C,0x2)/Pci(0x0,0x0)</key>
+			<dict>
+				<key>AAPL,slot-name</key>
+				<string>Slot-2</string>
+				<key>built-in</key>
+				<data>
+				AQ==
+				</data>
+				<key>device-id</key>
+				<data>
+				MxUAAA==
+				</data>
+				<key>device_type</key>
+				<string>Ethernet</string>
+				<key>model</key>
+				<string>Intel I210 Ethernet</string>
+			</dict>
 		</dict>
 		<key>Delete</key>
 		<dict/>
@@ -389,13 +406,13 @@
 				<key>Arch</key>
 				<string>x86_64</string>
 				<key>BundlePath</key>
-				<string>AppleIGC.kext</string>
+				<string>AppleIntelI210Ethernet.kext</string>
 				<key>Comment</key>
-				<string>AppleIGC.kext 1.9d2</string>
+				<string>AppleIntelI210Ethernet.kext 2.3.1 (Apple original, Monterey 12.6)</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
-				<string>Contents/MacOS/AppleIGC</string>
+				<string>Contents/MacOS/AppleIntelI210Ethernet</string>
 				<key>MaxKernel</key>
 				<string></string>
 				<key>MinKernel</key>
@@ -609,7 +626,7 @@
 				<key>Comment</key>
 				<string>NvidiaSensor: NVIDIA GPU temperature to SMC (TG0D/TG0P) for iStat</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/NvidiaSensor</string>
 				<key>MaxKernel</key>
@@ -979,7 +996,7 @@
 				AAAAAAAAAADsLOJ9hSE=
 				</data>
 				<key>boot-args</key>
-				<string>amfi_get_out_of_my_way=0x1 amfi=0x80 nvrmsettle=500 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=cpuname keepsyms=1 revcpu=1 -wegnoigpu gfxrst=4</string>
+				<string>amfi_get_out_of_my_way=0x1 amfi=0x80 nvrmsettle=500 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -no_compat_check revpatch=cpuname keepsyms=1 revcpu=1 -wegnoigpu gfxrst=4 e1000=0</string>
 				<key>csr-active-config</key>
 				<data>
 				QwoAAA==
